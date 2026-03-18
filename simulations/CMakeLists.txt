@@ -1,0 +1,2 @@
+add_executable(euler_simulation euler_simulation.cpp)
+target_link_libraries(euler_simulation PRIVATE euler_operators)
