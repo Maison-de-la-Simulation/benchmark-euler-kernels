@@ -42,6 +42,7 @@
 
 # Build files
 opt/
+__pycache__/
 slurm_out/
 results/
 build*/
