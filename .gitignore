@@ -39,3 +39,10 @@
 
 # debug information files
 *.dwo
+
+# Build files
+opt/
+slurm_out/
+results/
+build*/
+compile_commands.json
