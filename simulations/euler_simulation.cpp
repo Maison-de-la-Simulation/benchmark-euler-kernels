@@ -1,5 +1,8 @@
 #include <chrono>
+#include <fstream>
 #include <iostream>
+#include <ostream>
+#include <sstream>
 
 #include <Kokkos_Core.hpp>
 #include <cons_to_prim.hpp>
@@ -12,6 +15,8 @@
 #include <time_step.hpp>
 #include <uniform_mesh.hpp>
 
+#include "save_npy.hpp"
+
 int main(int argc, char** argv)
 {
     using index_t = int;
@@ -19,6 +24,7 @@ int main(int argc, char** argv)
 
     int const nx = 128;
     int const nt = 200;
+    int const output_freq = 10;
     real_t const cfl_factor = 0.49;
     real_t const gamma = 1.4;
 
@@ -44,14 +50,10 @@ int main(int argc, char** argv)
     init_implode(exec_space, prim_arrays, mesh);
     prim_to_cons(exec_space, as_const(prim_arrays), cons_arrays, eos);
 
-    //     for (int i = 0; i < prim_arrays.d.extent(0); ++i) {
-    //         std::cout << prim_arrays.d(i, nx / 2, nx / 2) << ' ';
-    //     }
-    //     std::cout << '\n';
-
     exec_space.fence();
     auto const start = std::chrono::steady_clock::now();
-    for (int it = 0; it < nt; ++it) {
+    int it = 0;
+    while (it < nt) {
         real_t const dt = time_step(exec_space, as_const(prim_arrays), eos, mesh);
 
         godunov(exec_space,
@@ -64,10 +66,17 @@ int main(int argc, char** argv)
 
         cons_to_prim(exec_space, as_const(cons_arrays), prim_arrays, eos);
 
-        // for (int i = 0; i < prim_arrays.d.extent(0); ++i) {
-        //     std::cout << prim_arrays.d(i, nx / 2, nx / 2) << ' ';
-        // }
-        // std::cout << '\n';
+        ++it;
+
+        if (output_freq > 0 && it % output_freq == 0) {
+            int const padding = 10;
+            std::stringstream ss;
+            ss << "test_" << std::setfill('0') << std::setw(padding) << it << ".npy";
+            std::fstream file(ss.str(), std::fstream::out);
+            std::cout << "Saving " << ss.str() << ' ';
+            save_npy(file, prim_arrays.p);
+            std::cout << "done\n" << std::flush;
+        }
     }
     exec_space.fence();
     auto const end = std::chrono::steady_clock::now();
