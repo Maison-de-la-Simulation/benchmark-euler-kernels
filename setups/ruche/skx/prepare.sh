@@ -3,8 +3,8 @@
 module purge
 
 module load \
-    gcc/11.2.0/gcc-4.8.5 \
-    cmake/3.28.3/gcc-11.2.0
+  gcc/13.4.0/gcc-15.1.0 \
+  cmake/3.31.9/gcc-15.1.0
 
 export install_dir=$PWD/opt/skx
 export Kokkos_ROOT=$install_dir/kokkos

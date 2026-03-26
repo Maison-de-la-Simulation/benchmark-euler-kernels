@@ -39,3 +39,11 @@
 
 # debug information files
 *.dwo
+
+# Build files
+opt/
+__pycache__/
+slurm_out/
+results/
+build*/
+compile_commands.json
