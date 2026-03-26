@@ -54,21 +54,22 @@ void init_from_state_test(
     init_from_value_test(exec_space, prim_arrays.ux1, prim.ux1);
     init_from_value_test(exec_space, prim_arrays.ux2, prim.ux2);
 }
-// include your headers
 
 TEST(PrimToCons, ScalarVsVectorized)
 {
     using real_t = double;
     using index_t = int;
 
-    int const n = 16; // keep small for unit test
+    int const n = 16;
 
     Kokkos::DefaultExecutionSpace exec_space;
     PerfectGas<real_t> eos(1.4);
 
-    // --- allocate ---
     auto prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n * n * n);
+    // --- allocate base ---
     auto cons_alloc_ref = create_cons_arrays_1d<real_t>(exec_space, n * n * n);
+
+    // --- allocate vectorized ---
     auto cons_alloc_vec = create_cons_arrays_1d<real_t>(exec_space, n * n * n);
 
     auto prim_arrays = to_mdspan<Kokkos::mdspan<
@@ -92,12 +93,11 @@ TEST(PrimToCons, ScalarVsVectorized)
     init_from_state_test(exec_space, prim_arrays, prim);
     exec_space.fence();
 
-    // --- run both implementations ---
+    // --- run both ---
     prim_to_cons(exec_space, as_const(prim_arrays), cons_ref, eos);
     prim_to_cons_vec(exec_space, as_const(prim_arrays), cons_vec, eos);
     exec_space.fence();
 
-    // --- compare ---
     auto ref_h = EulerConsArrays {
             .d = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.d),
             .e = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.mx0),
@@ -116,8 +116,8 @@ TEST(PrimToCons, ScalarVsVectorized)
     double const tol = 1e-12;
 
 
-    for (int i = 0; i < n; ++i)
-        for (int j = 0; j < n; ++j)
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
             for (int k = 0; k < n; ++k) {
                 int idx = i + (n * (j + n * k)); // layout_left flattening
 
@@ -127,4 +127,6 @@ TEST(PrimToCons, ScalarVsVectorized)
                 ASSERT_NEAR(ref_h.mx2(idx), vec_h.mx2(idx), tol);
                 ASSERT_NEAR(ref_h.e(idx), vec_h.e(idx), tol);
             }
+        }
+    }
 }
