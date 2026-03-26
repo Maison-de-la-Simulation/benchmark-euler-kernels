@@ -6,6 +6,8 @@ find_package(Kokkos REQUIRED)
 
 add_subdirectory(benchmarks)
 
+add_subdirectory(test)
+
 add_subdirectory(euler_operators)
 
 add_subdirectory(simulations)

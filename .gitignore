@@ -46,4 +46,5 @@ __pycache__/
 slurm_out/
 results/
 build*/
+.cache/
 compile_commands.json

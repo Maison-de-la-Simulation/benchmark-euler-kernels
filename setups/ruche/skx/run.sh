@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=benchmark_skx
+#SBATCH --job-name=test_skx
 #SBATCH --output=./slurm_out/%x.o%j
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=20
@@ -21,6 +21,5 @@ echo "RESULT_NAME =" "$RESULT_NAME"
 
 mkdir -p slurm_out results/ruche/skx
 
-./build-skx/benchmarks/euler_benchmarks \
-  --benchmark_out_format=json \
-  --benchmark_out="./results/ruche/skx/[${SLURM_JOB_ID}]_${RESULT_NAME}_bm_skx.json"
+# ./build-skx/simulations/euler_simulation
+./build-skx/test/euler_tests

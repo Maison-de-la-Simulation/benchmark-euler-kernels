@@ -12,6 +12,11 @@ private:
 public:
     explicit PerfectGas(T const gamma) : m_gamma(gamma) {}
 
+    KOKKOS_FUNCTION T gamma() const noexcept
+    {
+        return m_gamma;
+    }
+
     KOKKOS_FUNCTION T speed_of_sound(T const density, T const pressure) const noexcept
     {
         return Kokkos::sqrt(m_gamma * pressure / density);

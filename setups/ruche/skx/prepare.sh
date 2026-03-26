@@ -9,6 +9,7 @@ module load \
 export install_dir=$PWD/opt/skx
 export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
+export gtest_ROOT=$install_dir/gtest
 
 git clone --branch v1.9.4 --depth 1 https://github.com/google/benchmark.git
 cmake \
@@ -34,6 +35,16 @@ cmake \
 cmake --build build-kokkos
 cmake --install build-kokkos --prefix $Kokkos_ROOT
 rm -rf build-kokkos kokkos
+
+git clone --branch v1.17.0 --depth 1 https://github.com/google/googletest.git
+cmake \
+  -D CMAKE_BUILD_TYPE=Release \
+  -D CMAKE_CXX_STANDARD=20 \
+  -B build-gtest \
+  -S googletest
+cmake --build build-gtest
+cmake --install build-gtest --prefix $gtest_ROOT
+rm -rf build-gtest googletest
 
 cmake -D CMAKE_BUILD_TYPE=Release -B build-skx
 cmake --build build-skx
