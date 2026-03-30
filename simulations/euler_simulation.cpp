@@ -48,7 +48,7 @@ int main(int argc, char** argv)
             Kokkos::layout_left>>(cons_alloc, nx + 2, nx + 2, nx + 2);
 
     init_implode(exec_space, prim_arrays, mesh);
-    prim_to_cons(exec_space, as_const(prim_arrays), cons_arrays, eos);
+    prim_to_cons_vec(exec_space, as_const(prim_arrays), cons_arrays, eos);
 
     exec_space.fence();
     auto const start = std::chrono::steady_clock::now();
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
         if (output_freq > 0 && it % output_freq == 0) {
             int const padding = 10;
             std::stringstream ss;
-            ss << "test_" << std::setfill('0') << std::setw(padding) << it << ".npy";
+            ss << "test_vec_" << std::setfill('0') << std::setw(padding) << it << ".npy";
             std::fstream file(ss.str(), std::fstream::out);
             std::cout << "Saving " << ss.str() << ' ';
             save_npy(file, prim_arrays.p);

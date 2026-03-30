@@ -68,7 +68,7 @@ void prim_to_cons_vec(
     T* cm1 = cons_arrays.mx1.data_handle();
     T* cm2 = cons_arrays.mx2.data_handle();
 
-    simd_t const gamma_minus_one_inv = T(1) / (eos.gamma() - T(1));
+    double const gamma_minus_one_inv = T(1) / (eos.gamma() - T(1));
 
     IndexType const nx_blocks = nx / simd_width;
 
@@ -78,12 +78,12 @@ void prim_to_cons_vec(
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k) {
                 IndexType const base = bi * simd_width + nx * j + nx * ny * k;
 
-                // load SIMD lanes
                 simd_t d(pd + base, KE::simd_flag_default);
                 simd_t p(pp + base, KE::simd_flag_default);
                 simd_t ux0(pu0 + base, KE::simd_flag_default);
                 simd_t ux1(pu1 + base, KE::simd_flag_default);
                 simd_t ux2(pu2 + base, KE::simd_flag_default);
+
 
                 simd_t int_e = p * gamma_minus_one_inv;
                 simd_t e_kin = d * (ux0 * ux0 + ux1 * ux1 + ux2 * ux2) / T(2);

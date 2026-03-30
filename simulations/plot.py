@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-KERNEL_BENCHMARKS = ["Godunov", "TimeStep",  "ConsToPrim", "PrimToCons"]
+KERNEL_BENCHMARKS = ["Godunov", "TimeStep",  "ConsToPrim", "PrimToConsVectorized","PrimToCons" ]
 ALL_BENCHMARKS = KERNEL_BENCHMARKS
 ALL_BENCHMARKS.append("EulerSimulation")
 
@@ -15,124 +15,83 @@ ALL_BENCHMARKS.append("EulerSimulation")
 # ---------------------------------------------------------
 
 FILES={
-    "a100":   "./results/ruche/a100/[412780]_ALL-a100_bm_a100.json",
-     "v100":   "./results/ruche/v100/[412885]_ALL-v100_bm_v100.json",
-     "skx":   "./results/ruche/skx/[419180]_ALL-skx_bm_skx.json",
-
+         # "skx":   "./results/ruche/skx/[440175]_cpus-40_bm_ruche.json",
+         # "skx":   "./results/ruche/skx/[440222]_cpus-1_bm_ruche.json",
+         "skx":   "./results/ruche/skx/[452397]_cpus-40_bm_ruche.json",
+    # "skx": "./results/ruche/skx/[451301]_cpus-1_bm_ruche.json",
+    # "skx": "./results/ruche/skx/[451664]_cpus-20_bm_ruche.json",
+    # "skx": "./results/ruche/skx/[451295]_cpus-30_bm_ruche.json"
 }
-
-# each tuple is (slower, faster) → speedup = time[slower] / time[faster]
-SPEEDUPS = [
-    ("v100", "a100"),
-]
 
 OUT_DIR = "results/plots"
 
-# ---------------------------------------------------------
-# Load
-# ---------------------------------------------------------
-def load(path, benchmarks):
-    with open(path) as f:
-        data = json.load(f)["benchmarks"]
-    rows = []
-    for b in data:
-        name = b["name"]
-        match = next((bm for bm in benchmarks if bm in name), None)
-        if match is None:
-            continue
-        rows.append({
-            "benchmark": match,
-            "size": int(name.split("/")[-1]),
-            "time": b["cpu_time"],
-            "cells_per_second": b.get("cells_per_second"),
-            "bytes_per_second": b.get("bytes_per_second"),
-        })
-    return pd.DataFrame(rows)
 
-# ---------------------------------------------------------
-# Plot
-# ---------------------------------------------------------
-def plot_time(files, speedups, out_dir):
+def extract_label(path):
+    name = Path(path).name
+    label = name.split("_")[1]
+    timestamp = name.split("[")[1].split("]")[0]
+    return timestamp + "_" + label
+
+def plot_scalar_vs_vector(files, out_dir, base_name):
+    import json
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from pathlib import Path
+
+    def load_one(path):
+        with open(path) as f:
+            data = json.load(f)["benchmarks"]
+        rows = []
+        for b in data:
+            name = b["name"]
+            if base_name not in name and (base_name + "Vectorized") not in name:
+                continue
+            rows.append({
+                "benchmark": name.split("/")[0],
+                "size": int(name.split("/")[-1]),
+                "cells_per_second": b.get("cells_per_second"),
+                "bytes_per_second": b.get("bytes_per_second"),
+            })
+        return pd.DataFrame(rows)
+
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    datasets = {label: load(path, ALL_BENCHMARKS) for label, path in files.items()}
+    vec_name = base_name + "Vectorized"
 
-    for bm in ALL_BENCHMARKS:
+    for environment, path in files.items():
+        df = load_one(path)
+        bm_label = extract_label(path)
+
+        s = df[df["benchmark"] == base_name].sort_values("size")
+        v = df[df["benchmark"] == vec_name].sort_values("size")
+
+        if s.empty or v.empty:
+            print(f"skipping {base_name}")
+            continue  
+
         fig, ax1 = plt.subplots(figsize=(9, 5))
         ax2 = ax1.twinx()
 
-        # --- times ---
-        for label, df in datasets.items():
-            sub = df[df["benchmark"] == bm].sort_values("size")
-            if sub.empty:
-                continue
-            ax1.plot(sub["size"], sub["time"], marker="o", label=label)
+        # cells/s
+        ax1.plot(s["size"], s["cells_per_second"], "o-", label="scalar")
+        ax1.plot(v["size"], v["cells_per_second"], "s-", label="vectorized")
 
-        # --- speedups ---
-        for slow, fast in speedups:
-            if slow not in datasets or fast not in datasets:
-                continue
-            df_slow = datasets[slow][datasets[slow]["benchmark"] == bm].sort_values("size")
-            df_fast = datasets[fast][datasets[fast]["benchmark"] == bm].sort_values("size")
-            merged = df_slow.merge(df_fast, on="size", suffixes=(f"_{slow}", f"_{fast}"))
-            merged["speedup"] = merged[f"time_{slow}"] / merged[f"time_{fast}"]
-            ax2.plot(merged["size"], merged["speedup"], linestyle="--",
-                     marker="s", label=f"{slow}→{fast} speedup", color="red")
+        # bytes/s
+        ax2.plot(s["size"], s["bytes_per_second"], "--")
+        ax2.plot(v["size"], v["bytes_per_second"], ":")
 
-        ax1.set_title(bm)
-        ax1.set_xlabel("nx")
-        ax1.set_ylabel("Time (ns)")
-        ax2.set_ylabel("Speedup v100/a100")
-        ax2.axhline(1.0, color="gray", linewidth=0.8, linestyle=":")
-
-        lines1, labels1 = ax1.get_legend_handles_labels()
-        lines2, labels2 = ax2.get_legend_handles_labels()
-        ax1.legend(lines1 + lines2, labels1 + labels2, fontsize=8)
-
-        ax1.grid(True)
-        ax1.set_yscale("log", base=2)
-        plt.tight_layout()
-        path = out_dir / f"{bm}_times.png"
-        plt.savefig(path, dpi=200)
-        plt.close()
-        print("saved:", path)
-
-
-def plot_items(files,out_dir):
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    datasets = {label: load(path, KERNEL_BENCHMARKS) for label, path in files.items()}
-
-    for bm in KERNEL_BENCHMARKS:
-
-        fig, ax1 = plt.subplots(figsize=(9, 5))
-
-        # --- cells_per_second ---
-        for label, df in datasets.items():
-            sub = df[df["benchmark"] == bm].sort_values("size")
-            if sub.empty:
-                continue
-            ax1.plot(sub["size"], sub["cells_per_second"], marker="o", label=label)
-
-
-        
-        ax1.set_title(bm)
+        ax1.set_title(base_name +" " + bm_label)
         ax1.set_xlabel("nx")
         ax1.set_ylabel("cells/s")
+        ax2.set_ylabel("bytes/s")
 
-        lines1, labels1 = ax1.get_legend_handles_labels()
-        ax1.legend(lines1, labels1, fontsize=8)
-
+        ax1.legend(fontsize=8)
         ax1.grid(True)
         plt.tight_layout()
-        path = out_dir / f"{bm}_items.png"
-        plt.savefig(path, dpi=200)
+
+        print("saving ...")
+        plt.savefig(out_dir / f"{environment}_{bm_label}_{base_name}.png", dpi=200)
         plt.close()
-        print("saved:", path)
 
-plot_time(FILES, SPEEDUPS, OUT_DIR)
-plot_items(FILES, OUT_DIR)
-
-
+plot_scalar_vs_vector(FILES, OUT_DIR, "PrimToCons")
