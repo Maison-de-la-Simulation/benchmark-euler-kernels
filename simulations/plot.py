@@ -13,16 +13,14 @@ ALL_BENCHMARKS.append("EulerSimulation")
 # ---------------------------------------------------------
 # Config
 # ---------------------------------------------------------
-
-FILES={
-         # "skx":   "./results/ruche/skx/[440175]_cpus-40_bm_ruche.json",
-         # "skx":   "./results/ruche/skx/[440222]_cpus-1_bm_ruche.json",
-         "skx":   "./results/ruche/skx/[452397]_cpus-40_bm_ruche.json",
-    # "skx": "./results/ruche/skx/[451301]_cpus-1_bm_ruche.json",
-    # "skx": "./results/ruche/skx/[451664]_cpus-20_bm_ruche.json",
-    # "skx": "./results/ruche/skx/[451295]_cpus-30_bm_ruche.json"
+FILES = {
+    # "skx_1":  "results/ruche/skx/[455228]_cpus-1_bm_ruche.json",
+    "skx":  "results/ruche/skx/[455363]_skx-PrimToCons_bm_ruche.json",
+    # "skx_10": "results/ruche/skx/[453127]_cpus-10-ref_bm_ruche.json",
+    # "skx_20": "results/ruche/skx/[453128]_cpus-20-ref_bm_ruche.json",
+    # "skx_30": "results/ruche/skx/[453129]_cpus-30-ref_bm_ruche.json",
+    # "skx_40": "results/ruche/skx/[453130]_cpus-40-ref_bm_ruche.json",
 }
-
 OUT_DIR = "results/plots"
 
 
@@ -58,6 +56,7 @@ def plot_scalar_vs_vector(files, out_dir, base_name):
     out_dir.mkdir(parents=True, exist_ok=True)
 
     vec_name = base_name + "Vectorized"
+    print(files)
 
     for environment, path in files.items():
         df = load_one(path)

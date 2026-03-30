@@ -68,31 +68,40 @@ void prim_to_cons_vec(
     T* cm1 = cons_arrays.mx1.data_handle();
     T* cm2 = cons_arrays.mx2.data_handle();
 
-    double const gamma_minus_one_inv = T(1) / (eos.gamma() - T(1));
 
     IndexType const nx_blocks = nx / simd_width;
 
     Kokkos::parallel_for(
             "prim_to_cons_vec",
-            Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {nx_blocks, ny, nz}),
+            Kokkos::MDRangePolicy<Kokkos::Rank<
+                    3,
+                    Kokkos::Iterate::Left,
+                    Kokkos::Iterate::Left>>({0, 0, 0}, {nx_blocks, ny, nz}),
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k) {
                 IndexType const base = bi * simd_width + nx * j + nx * ny * k;
 
+                // --- Loads ---
                 simd_t d(pd + base, KE::simd_flag_default);
                 simd_t p(pp + base, KE::simd_flag_default);
                 simd_t ux0(pu0 + base, KE::simd_flag_default);
                 simd_t ux1(pu1 + base, KE::simd_flag_default);
                 simd_t ux2(pu2 + base, KE::simd_flag_default);
 
+                // --- Compute momenta once, reuse for kinetic energy ---
+                simd_t m0 = d * ux0; // reused below
+                simd_t m1 = d * ux1;
+                simd_t m2 = d * ux2;
 
-                simd_t int_e = p * gamma_minus_one_inv;
-                simd_t e_kin = d * (ux0 * ux0 + ux1 * ux1 + ux2 * ux2) / T(2);
+                // e_kin = 0.5 * (m·u) avoids re-multiplying d
+                simd_t e_kin = T(0.5) * (m0 * ux0 + m1 * ux1 + m2 * ux2);
+                simd_t e_tot = e_kin + eos.internal_energy(d, p);
 
-                d.copy_to(cd + base, KE::simd_flag_default);
-                (e_kin + int_e).copy_to(ce + base, KE::simd_flag_default);
-                (d * ux0).copy_to(cm0 + base, KE::simd_flag_default);
-                (d * ux1).copy_to(cm1 + base, KE::simd_flag_default);
-                (d * ux2).copy_to(cm2 + base, KE::simd_flag_default);
+                // --- Stores (skip redundant d copy if cd == pd) ---
+                // d.copy_to(cd + base, KE::simd_flag_default); // remove if cd == pd
+                e_tot.copy_to(ce + base, KE::simd_flag_default);
+                m0.copy_to(cm0 + base, KE::simd_flag_default);
+                m1.copy_to(cm1 + base, KE::simd_flag_default);
+                m2.copy_to(cm2 + base, KE::simd_flag_default);
             });
 
     IndexType const rem_start = nx_blocks * simd_width;
@@ -111,7 +120,7 @@ void prim_to_cons_vec(
                     T const ux1 = pu1[base];
                     T const ux2 = pu2[base];
 
-                    T const int_e = p * (T(1) / (eos.gamma() - T(1)));
+                    T const int_e = eos.internal_energy(d, p);
                     T const e_kin = d * (ux0 * ux0 + ux1 * ux1 + ux2 * ux2) / T(2);
 
                     cd[base] = d;
