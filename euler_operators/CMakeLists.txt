@@ -9,6 +9,7 @@ target_sources(
                 godunov.hpp
                 hllc.hpp
                 perfect_gas.hpp
+                periodic_boundary_conditions.hpp
                 prim_to_cons.hpp
                 time_step.hpp
                 uniform_mesh.hpp

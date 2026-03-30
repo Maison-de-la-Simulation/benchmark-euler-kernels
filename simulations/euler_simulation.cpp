@@ -11,6 +11,7 @@
 #include <hllc.hpp>
 #include <init_implode.hpp>
 #include <perfect_gas.hpp>
+#include <periodic_boundary_conditions.hpp>
 #include <prim_to_cons.hpp>
 #include <time_step.hpp>
 #include <uniform_mesh.hpp>
@@ -63,6 +64,8 @@ int main(int argc, char** argv)
                 mesh,
                 riemann_solver,
                 cfl_factor * dt);
+
+        boundary_conditions_periodic(exec_space, cons_arrays, 1);
 
         cons_to_prim(exec_space, as_const(cons_arrays), prim_arrays, eos);
 
