@@ -15,12 +15,8 @@ void boundary_conditions_periodic(
     Kokkos::View<T***, Kokkos::LayoutLeft> const
             view(mds.data_handle(), mds.extent(0), mds.extent(1), mds.extent(2));
 
-
-
     // Each dimension: left ghost <- right interior : [0,gw) <- [N-2gw,N-gw), right ghost <- left interior:  [N-gw,N) <- [gw,2gw)
     // ALL on later dimensions includes ghost cells written by earlier copies (corner propagation)
-
-
 
     // dim 0
     Kokkos::deep_copy(
