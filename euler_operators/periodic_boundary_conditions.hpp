@@ -14,6 +14,15 @@ void boundary_conditions_periodic(
     using Kokkos::ALL;
     Kokkos::View<T***, Kokkos::LayoutLeft> const
             view(mds.data_handle(), mds.extent(0), mds.extent(1), mds.extent(2));
+
+
+
+    // Each dimension: left ghost <- right interior : [0,gw) <- [N-2gw,N-gw), right ghost <- left interior:  [N-gw,N) <- [gw,2gw)
+    // ALL on later dimensions includes ghost cells written by earlier copies (corner propagation)
+
+
+
+    // dim 0
     Kokkos::deep_copy(
             exec_space,
             Kokkos::subview(view, Kokkos::make_pair(0, gw), ALL, ALL),
@@ -27,6 +36,7 @@ void boundary_conditions_periodic(
             Kokkos::subview(view, Kokkos::make_pair(view.extent(0) - gw, view.extent(0)), ALL, ALL),
             Kokkos::subview(view, Kokkos::make_pair(gw, 2 * gw), ALL, ALL));
 
+    // dim 1
     Kokkos::deep_copy(
             exec_space,
             Kokkos::subview(view, ALL, Kokkos::make_pair(0, gw), ALL),
@@ -40,6 +50,8 @@ void boundary_conditions_periodic(
             Kokkos::subview(view, ALL, Kokkos::make_pair(view.extent(1) - gw, view.extent(1)), ALL),
             Kokkos::subview(view, ALL, Kokkos::make_pair(gw, 2 * gw), ALL));
 
+
+    // dim 2
     Kokkos::deep_copy(
             exec_space,
             Kokkos::subview(view, ALL, ALL, Kokkos::make_pair(0, gw)),
@@ -53,6 +65,7 @@ void boundary_conditions_periodic(
             Kokkos::subview(view, ALL, ALL, Kokkos::make_pair(view.extent(2) - gw, view.extent(2))),
             Kokkos::subview(view, ALL, ALL, Kokkos::make_pair(gw, 2 * gw)));
 }
+
 
 template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void boundary_conditions_periodic(
