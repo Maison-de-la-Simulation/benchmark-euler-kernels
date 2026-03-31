@@ -79,11 +79,14 @@ void prim_to_cons_kernel(
                 SimdType m2 = d * ux2;
                 SimdType e_tot
                         = T(0.5) * (m0 * ux0 + m1 * ux1 + m2 * ux2) + eos.internal_energy(d, p);
-                d.copy_to(cd + base, KE::simd_flag_default);
-                e_tot.copy_to(ce + base, KE::simd_flag_default);
-                m0.copy_to(cm0 + base, KE::simd_flag_default);
-                m1.copy_to(cm1 + base, KE::simd_flag_default);
-                m2.copy_to(cm2 + base, KE::simd_flag_default);
+
+
+
+                KE::simd_unchecked_store(d, cd + base, KE::simd_flag_default);
+                KE::simd_unchecked_store(e_tot, ce + base, KE::simd_flag_default);
+                KE::simd_unchecked_store(m0, cm0 + base, KE::simd_flag_default);
+                KE::simd_unchecked_store(m1, cm1 + base, KE::simd_flag_default);
+                KE::simd_unchecked_store(m2, cm2 + base, KE::simd_flag_default);
             });
 }
 
