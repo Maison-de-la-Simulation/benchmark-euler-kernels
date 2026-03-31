@@ -3,6 +3,7 @@
 #include <Kokkos_Core.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
+#include "utils.hpp"
 
 template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void cons_to_prim(

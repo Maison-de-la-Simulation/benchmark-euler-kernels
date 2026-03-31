@@ -4,6 +4,8 @@ project(euler_benchmarks CXX)
 
 find_package(Kokkos REQUIRED)
 
+add_subdirectory(utils)
+
 add_subdirectory(benchmarks)
 
 add_subdirectory(test)

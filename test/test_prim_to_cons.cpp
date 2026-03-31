@@ -1,3 +1,4 @@
+
 #include <gtest/gtest.h>
 
 #include <Kokkos_Core.hpp>
@@ -5,55 +6,7 @@
 #include <perfect_gas.hpp>
 #include <prim_to_cons.hpp>
 
-template <
-        class ElementType,
-        class IndexType,
-        std::size_t E0,
-        std::size_t E1,
-        std::size_t E2,
-        class LP,
-        class AP>
-void init_from_value_test(
-        Kokkos::DefaultExecutionSpace const& exec_space,
-        Kokkos::mdspan<ElementType, Kokkos::extents<IndexType, E0, E1, E2>, LP, AP> const& array,
-        ElementType const& value)
-{
-    Kokkos::parallel_for(
-            "init_from_value",
-            Kokkos::MDRangePolicy<
-                    Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
-                    Kokkos::IndexType<IndexType>>(
-                    exec_space,
-                    {0, 0, 0},
-                    {array.extent(0), array.extent(1), array.extent(2)}),
-            KOKKOS_LAMBDA(IndexType const i, IndexType const j, IndexType const k) {
-                array(i, j, k) = value;
-            });
-}
-
-
-
-template <
-        class ElementType,
-        class IndexType,
-        std::size_t E0,
-        std::size_t E1,
-        std::size_t E2,
-        class LP,
-        class AP>
-void init_from_state_test(
-        Kokkos::DefaultExecutionSpace const& exec_space,
-        EulerPrimArrays<
-                Kokkos::mdspan<ElementType, Kokkos::extents<IndexType, E0, E1, E2>, LP, AP>> const&
-                prim_arrays,
-        EulerPrim<ElementType> const& prim)
-{
-    init_from_value_test(exec_space, prim_arrays.d, prim.d);
-    init_from_value_test(exec_space, prim_arrays.p, prim.p);
-    init_from_value_test(exec_space, prim_arrays.ux0, prim.ux0);
-    init_from_value_test(exec_space, prim_arrays.ux1, prim.ux1);
-    init_from_value_test(exec_space, prim_arrays.ux2, prim.ux2);
-}
+#include "utils.hpp"
 
 TEST(PrimToCons, ScalarVsVectorized)
 {
@@ -90,7 +43,7 @@ TEST(PrimToCons, ScalarVsVectorized)
     // --- initialize with non-trivial state ---
     EulerPrim<real_t> prim {.d = 1.0, .p = 1.0, .ux0 = 0.5, .ux1 = -0.3, .ux2 = 0.1};
 
-    init_from_state_test(exec_space, prim_arrays, prim);
+    init_from_state(exec_space, prim_arrays, prim);
     exec_space.fence();
 
     // --- run both ---

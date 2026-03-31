@@ -14,8 +14,8 @@ ALL_BENCHMARKS.append("EulerSimulation")
 # Config
 # ---------------------------------------------------------
 FILES = {
-    # "skx_1":  "results/ruche/skx/[455228]_cpus-1_bm_ruche.json",
-    "skx_rem":  "results/ruche/skx/[457078]_skx-PrimToCons_bm_ruche.json",
+    "skx_kokkos5.0.0":  "results/ruche/skx/[457139]_skx-PrimToCons_bm_ruche.json",
+    # "skx_rem":  "results/ruche/skx/[457078]_skx-PrimToCons_bm_ruche.json",
     # "skx_rem":"results/ruche/skx/[457041]_skx-PrimToCons_bm_ruche.json",
 
     # "skx_10": "results/ruche/skx/[453127]_cpus-10-ref_bm_ruche.json",

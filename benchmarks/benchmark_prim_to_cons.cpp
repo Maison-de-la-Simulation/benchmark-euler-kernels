@@ -4,6 +4,7 @@
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 #include <prim_to_cons.hpp>
+#include "utils.hpp"
 
 #include "benchmark_utils.hpp"
 #include "index_type.hpp"

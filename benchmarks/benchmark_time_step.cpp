@@ -9,6 +9,7 @@
 #include "benchmark_utils.hpp"
 #include "index_type.hpp"
 #include "real_type.hpp"
+#include "utils.hpp"
 
 namespace {
 
