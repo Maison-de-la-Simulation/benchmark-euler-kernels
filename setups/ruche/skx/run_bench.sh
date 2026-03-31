@@ -3,7 +3,7 @@
 #SBATCH --output=./slurm_out/%x.o%j
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=00:15:00
+#SBATCH --time=00:10:00
 #SBATCH --partition=cpu_short
 #SBATCH --exclusive
 #SBATCH --hint=nomultithread
