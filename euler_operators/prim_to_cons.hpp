@@ -37,36 +37,44 @@ void prim_to_cons(
 
 
 
-template <class SimdType, class T, class IndexType>
+template <class SimdType, class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void prim_to_cons_kernel(
         Kokkos::DefaultExecutionSpace const& exec_space,
-        T const* pd,
-        T const* pp,
-        T const* pu0,
-        T const* pu1,
-        T const* pu2,
-        T* cd,
-        T* ce,
-        T* cm0,
-        T* cm1,
-        T* cm2,
+        EulerPrimArrays<Kokkos::mdspan<
+                T const,
+                Kokkos::extents<IndexType, E0, E1, E2>,
+                Kokkos::layout_left>> const& prim_arrays,
+        EulerConsArrays<Kokkos::mdspan<
+                T,
+                Kokkos::extents<IndexType, E0, E1, E2>,
+                Kokkos::layout_left>> const& cons_arrays,
         IndexType nx_begin,
         IndexType nx_end,
-        IndexType ny,
-        IndexType nz,
         PerfectGas<T> const& eos)
 {
     namespace KE = Kokkos::Experimental;
     constexpr IndexType width = SimdType::size();
     IndexType const nx_blocks = (nx_end - nx_begin) / width;
-    IndexType const nx = nx_end; // full nx for stride computation
+    IndexType const nx = prim_arrays.d.extent(0);
+    IndexType const ny = prim_arrays.d.extent(1);
+    IndexType const nz = prim_arrays.d.extent(2);
+
+    T const* pd = prim_arrays.d.data_handle();
+    T const* pp = prim_arrays.p.data_handle();
+    T const* pu0 = prim_arrays.ux0.data_handle();
+    T const* pu1 = prim_arrays.ux1.data_handle();
+    T const* pu2 = prim_arrays.ux2.data_handle();
+    T* cd = cons_arrays.d.data_handle();
+    T* ce = cons_arrays.e.data_handle();
+    T* cm0 = cons_arrays.mx0.data_handle();
+    T* cm1 = cons_arrays.mx1.data_handle();
+    T* cm2 = cons_arrays.mx2.data_handle();
 
     Kokkos::parallel_for(
             "prim_to_cons_kernel",
-            Kokkos::MDRangePolicy<Kokkos::Rank<
-                    3,
-                    Kokkos::Iterate::Left,
-                    Kokkos::Iterate::Left>>({0, 0, 0}, {nx_blocks, ny, nz}),
+            Kokkos::MDRangePolicy<
+                    Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
+                    Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {nx_blocks, ny, nz}),
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k) {
                 IndexType const base = (nx_begin + bi * width) + nx * j + nx * ny * k;
                 SimdType d(pd + base, KE::simd_flag_default);
@@ -79,9 +87,6 @@ void prim_to_cons_kernel(
                 SimdType m2 = d * ux2;
                 SimdType e_tot
                         = T(0.5) * (m0 * ux0 + m1 * ux1 + m2 * ux2) + eos.internal_energy(d, p);
-
-
-
                 KE::simd_unchecked_store(d, cd + base, KE::simd_flag_default);
                 KE::simd_unchecked_store(e_tot, ce + base, KE::simd_flag_default);
                 KE::simd_unchecked_store(m0, cm0 + base, KE::simd_flag_default);
@@ -107,59 +112,12 @@ void prim_to_cons_vec(
     using simd_t = KE::simd<T>;
     using simd_scalar_t = KE::basic_simd<T, KE::simd_abi::scalar>;
 
-
     IndexType const nx = prim_arrays.d.extent(0);
-    IndexType const ny = prim_arrays.d.extent(1);
-    IndexType const nz = prim_arrays.d.extent(2);
-
-    T const* pd = prim_arrays.d.data_handle();
-    T const* pp = prim_arrays.p.data_handle();
-    T const* pu0 = prim_arrays.ux0.data_handle();
-    T const* pu1 = prim_arrays.ux1.data_handle();
-    T const* pu2 = prim_arrays.ux2.data_handle();
-    T* cd = cons_arrays.d.data_handle();
-    T* ce = cons_arrays.e.data_handle();
-    T* cm0 = cons_arrays.mx0.data_handle();
-    T* cm1 = cons_arrays.mx1.data_handle();
-    T* cm2 = cons_arrays.mx2.data_handle();
-
     IndexType const vec_end = (nx / simd_t::size()) * simd_t::size();
 
-    prim_to_cons_kernel<simd_t>(
-            exec_space,
-            pd,
-            pp,
-            pu0,
-            pu1,
-            pu2,
-            cd,
-            ce,
-            cm0,
-            cm1,
-            cm2,
-            IndexType(0),
-            vec_end,
-            ny,
-            nz,
-            eos);
+    prim_to_cons_kernel<simd_t>(exec_space, prim_arrays, cons_arrays, IndexType(0), vec_end, eos);
 
     if (vec_end < nx) {
-        prim_to_cons_kernel<simd_scalar_t>(
-                exec_space,
-                pd,
-                pp,
-                pu0,
-                pu1,
-                pu2,
-                cd,
-                ce,
-                cm0,
-                cm1,
-                cm2,
-                vec_end,
-                nx,
-                ny,
-                nz,
-                eos);
+        prim_to_cons_kernel<simd_scalar_t>(exec_space, prim_arrays, cons_arrays, vec_end, nx, eos);
     }
 }

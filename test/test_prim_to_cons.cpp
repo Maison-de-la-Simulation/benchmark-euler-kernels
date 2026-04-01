@@ -8,12 +8,12 @@
 
 #include "utils.hpp"
 
-TEST(PrimToCons, ScalarVsVectorized)
+TEST(PrimToConsRemainder, ScalarVsVectorized)
 {
     using real_t = double;
     using index_t = int;
 
-    int const n = 16;
+    int const n = 23;
 
     Kokkos::DefaultExecutionSpace exec_space;
     PerfectGas<real_t> eos(1.4);
