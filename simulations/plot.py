@@ -14,9 +14,13 @@ ALL_BENCHMARKS.append("EulerSimulation")
 # Config
 # ---------------------------------------------------------
 FILES = {
-    "skx_ref":  "results/ruche/skx/[460375]_skx-PrimToCons_bm_ruche.json",
+    "skx_store":  "results/ruche/skx/[460979]_skx-PrimToCons_bm_ruche.json",
     "skx_ref2":  "results/ruche/skx/[460449]_skx-PrimToCons_bm_ruche.json",
+    "skx_ptr":  "results/ruche/skx/[462651]_skx-PrimToCons_bm_ruche.json",
+
+
     }
+
 OUT_DIR = "results/plots"
 
 
@@ -132,6 +136,8 @@ def plot_scalar_vs_vector(files, out_dir):
             ax_left.set_ylabel("cells / s")
             ax_bytes.set_ylabel("bytes / s")
             ax_left.set_title("Throughput")
+            ax_right.set_xscale("log")
+            ax_right.set_yscale("log")
             ax_left.legend(fontsize=7)
             ax_left.grid(True, alpha=0.3)
 
@@ -177,5 +183,45 @@ def plot_scalar_vs_vector(files, out_dir):
             plt.savefig(out_dir / f"{bm_label}_{base_name}.png", dpi=200)
             plt.close()
 
+def compare_benchmarks(path_a, path_b, out_csv, label_a="a", label_b="b"):
+    df_a, _ = load_one(path_a)
+    df_b, _ = load_one(path_b)
 
+    merged = pd.merge(
+        df_a,
+        df_b,
+        on=["benchmark", "size"],
+        suffixes=(f"_{label_a}", f"_{label_b}"),
+        how="inner",
+    )
+
+    merged["real_time_speedup"] = (
+        merged[f"real_time_ns_{label_a}"] / merged[f"real_time_ns_{label_b}"]
+    )
+
+    for col in ("cells_per_second", "bytes_per_second"):
+        a_col = f"{col}_{label_a}"
+        b_col = f"{col}_{label_b}"
+        if a_col in merged and b_col in merged:
+            merged[f"{col}_speedup"] = merged[b_col] / merged[a_col]
+
+    mean_row = merged.mean(numeric_only=True).to_frame().T
+    mean_row["benchmark"] = "MEAN"
+    mean_row["size"] = pd.NA
+    merged = pd.concat([merged, mean_row], ignore_index=True)
+
+    rounding = {c: 5 for c in merged.columns if "speedup" in c}
+    rounding |= {c: 5 for c in merged.columns if "time" in c}
+    rounding |= {c: 5 for c in merged.columns if "cells_per_second" in c or "bytes_per_second" in c}
+    merged = merged.round(rounding)
+
+
+   
+    out_csv = Path(out_csv)
+    out_csv.parent.mkdir(parents=True, exist_ok=True)
+    merged.to_csv(out_csv, index=False)
+    return merged
+# %%
 plot_scalar_vs_vector(FILES, OUT_DIR)
+# compare_benchmarks(FILES["skx_ref2"], FILES["skx_store"], "store.csv", "ref2", "store")
+

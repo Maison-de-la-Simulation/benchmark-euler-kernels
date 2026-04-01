@@ -2,8 +2,6 @@
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_SIMD.hpp>
-#include <Kokkos_SIMD_Common.hpp>
-#include <Kokkos_SIMD_Scalar.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 
@@ -52,23 +50,12 @@ void prim_to_cons_kernel(
         IndexType nx_end,
         PerfectGas<T> const& eos)
 {
-    namespace KE = Kokkos::Experimental;
     constexpr IndexType width = SimdType::size();
     IndexType const nx_blocks = (nx_end - nx_begin) / width;
     IndexType const nx = prim_arrays.d.extent(0);
     IndexType const ny = prim_arrays.d.extent(1);
     IndexType const nz = prim_arrays.d.extent(2);
 
-    T const* pd = prim_arrays.d.data_handle();
-    T const* pp = prim_arrays.p.data_handle();
-    T const* pu0 = prim_arrays.ux0.data_handle();
-    T const* pu1 = prim_arrays.ux1.data_handle();
-    T const* pu2 = prim_arrays.ux2.data_handle();
-    T* cd = cons_arrays.d.data_handle();
-    T* ce = cons_arrays.e.data_handle();
-    T* cm0 = cons_arrays.mx0.data_handle();
-    T* cm1 = cons_arrays.mx1.data_handle();
-    T* cm2 = cons_arrays.mx2.data_handle();
 
     Kokkos::parallel_for(
             "prim_to_cons_kernel",
@@ -77,21 +64,10 @@ void prim_to_cons_kernel(
                     Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {nx_blocks, ny, nz}),
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k) {
                 IndexType const base = (nx_begin + bi * width) + nx * j + nx * ny * k;
-                SimdType d(pd + base, KE::simd_flag_default);
-                SimdType p(pp + base, KE::simd_flag_default);
-                SimdType ux0(pu0 + base, KE::simd_flag_default);
-                SimdType ux1(pu1 + base, KE::simd_flag_default);
-                SimdType ux2(pu2 + base, KE::simd_flag_default);
-                SimdType m0 = d * ux0;
-                SimdType m1 = d * ux1;
-                SimdType m2 = d * ux2;
-                SimdType e_tot
-                        = T(0.5) * (m0 * ux0 + m1 * ux1 + m2 * ux2) + eos.internal_energy(d, p);
-                KE::simd_unchecked_store(d, cd + base, KE::simd_flag_default);
-                KE::simd_unchecked_store(e_tot, ce + base, KE::simd_flag_default);
-                KE::simd_unchecked_store(m0, cm0 + base, KE::simd_flag_default);
-                KE::simd_unchecked_store(m1, cm1 + base, KE::simd_flag_default);
-                KE::simd_unchecked_store(m2, cm2 + base, KE::simd_flag_default);
+
+                EulerPrim const prim = load<SimdType>(prim_arrays, base);
+                EulerCons const cons = to_cons<SimdType>(prim, eos.internal_energy(prim.d, prim.p));
+                store<SimdType>(cons, cons_arrays, base);
             });
 }
 
