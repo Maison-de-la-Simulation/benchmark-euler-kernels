@@ -27,4 +27,4 @@ BENCHMARK_FILTER=${1:-""}
 ./build-skx/benchmarks/euler_benchmarks \
   --benchmark_filter="${BENCHMARK_FILTER}" \
   --benchmark_out_format=json \
-  --benchmark_out=./results/ruche/skx/"[${SLURM_JOB_ID}]_skx-${BENCHMARK_FILTER}_bm_ruche.json"
+  --benchmark_out=./results/ruche/skx/"[${SLURM_JOB_ID}]_skx-${BENCHMARK_FILTER}.json"

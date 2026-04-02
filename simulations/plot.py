@@ -13,22 +13,35 @@ ALL_BENCHMARKS.append("EulerSimulation")
 # ---------------------------------------------------------
 # Config
 # ---------------------------------------------------------
-FILES = {
-    "skx_store":  "results/ruche/skx/[460979]_skx-PrimToCons_bm_ruche.json",
-    "skx_ref2":  "results/ruche/skx/[460449]_skx-PrimToCons_bm_ruche.json",
-    "skx_ptr":  "results/ruche/skx/[462651]_skx-PrimToCons_bm_ruche.json",
 
-
-    }
 
 OUT_DIR = "results/plots"
 
+import os
+import glob
+
+RES_DIR = "results/ruche/skx/"
+
+def latest_result(res_dir=RES_DIR, pattern="*.json"):
+    files = glob.glob(os.path.join(res_dir, pattern))
+    print(files)
+    if not files:
+        raise FileNotFoundError(f"No files matching {pattern} in {res_dir}")
+    return max(files, key=os.path.getmtime)
+
+def result_by_job_id(job_id, res_dir=RES_DIR):
+    prefix = f"[{job_id}]"
+    files = os.listdir(res_dir)
+    for f in files:
+        if f.startswith(prefix):
+            return os.path.join(res_dir, f)
+    raise FileNotFoundError(f"No result found for job {job_id} in {res_dir}")
 
 def extract_label(path):
     name = Path(path).name
     label = name.split("_")[1]
     timestamp = name.split("[")[1].split("]")[0]
-    return timestamp + "_" + label
+    return timestamp + "_" 
 
 
 
@@ -180,10 +193,13 @@ def plot_scalar_vs_vector(files, out_dir):
             ax_right.grid(True, alpha=0.3)
 
             plt.tight_layout()
-            plt.savefig(out_dir / f"{bm_label}_{base_name}.png", dpi=200)
+            print("bm_label = " , bm_label)
+            save_name = out_dir / f"{bm_label}_{base_name}.png"
+            print("saving : ", save_name)
+            plt.savefig(save_name, dpi=200)
             plt.close()
 
-def compare_benchmarks(path_a, path_b, out_csv, label_a="a", label_b="b"):
+def compare_benchmarks(path_a, path_b, out_csv, label_a="a", label_b="b", cols=None):
     df_a, _ = load_one(path_a)
     df_b, _ = load_one(path_b)
 
@@ -205,6 +221,10 @@ def compare_benchmarks(path_a, path_b, out_csv, label_a="a", label_b="b"):
         if a_col in merged and b_col in merged:
             merged[f"{col}_speedup"] = merged[b_col] / merged[a_col]
 
+    merged = merged[merged.benchmark == "PrimToConsVectorized"]
+    if cols:
+        merged = merged[cols]
+
     mean_row = merged.mean(numeric_only=True).to_frame().T
     mean_row["benchmark"] = "MEAN"
     mean_row["size"] = pd.NA
@@ -222,6 +242,13 @@ def compare_benchmarks(path_a, path_b, out_csv, label_a="a", label_b="b"):
     merged.to_csv(out_csv, index=False)
     return merged
 # %%
+
+
+FILES = {
+"skx_ref":  result_by_job_id(463476),
+    # " skx_load" : result_by_job_id(468185)
+"skx_new":  latest_result(),
+}
 plot_scalar_vs_vector(FILES, OUT_DIR)
-# compare_benchmarks(FILES["skx_ref2"], FILES["skx_store"], "store.csv", "ref2", "store")
+compare_benchmarks(FILES["skx_ref"], FILES["skx_new"], "store.csv", "ch", "new", cols=["benchmark", "size", "real_time_speedup"])
 

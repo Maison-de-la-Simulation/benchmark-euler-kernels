@@ -4,6 +4,7 @@
 #include <type_traits>
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_Macros.hpp>
 #include <Kokkos_SIMD.hpp>
 
 template <class T>
@@ -54,15 +55,6 @@ KOKKOS_FUNCTION constexpr T internal_energy(EulerCons<T> const& cons) noexcept
     return cons.e - kinetic_energy(cons);
 }
 
-template <class T>
-KOKKOS_FUNCTION EulerCons<T> to_cons(EulerPrim<T> const& prim, T const int_e) noexcept
-{
-    return {.d = prim.d,
-            .e = kinetic_energy(prim) + int_e,
-            .mx0 = prim.d * prim.ux0,
-            .mx1 = prim.d * prim.ux1,
-            .mx2 = prim.d * prim.ux2};
-}
 
 template <class T>
 KOKKOS_FUNCTION EulerPrim<T> to_prim(EulerCons<T> const& cons, T const p) noexcept
@@ -74,6 +66,20 @@ KOKKOS_FUNCTION EulerPrim<T> to_prim(EulerCons<T> const& cons, T const p) noexce
             .ux1 = cons.mx1 * vol_spe,
             .ux2 = cons.mx2 * vol_spe};
 }
+
+template <class T>
+KOKKOS_FUNCTION EulerCons<T> to_cons(EulerPrim<T> const prim, T const int_e) noexcept
+{
+    T m0 = prim.d * prim.ux0; // reused below
+    T m1 = prim.d * prim.ux1;
+    T m2 = prim.d * prim.ux2;
+
+    T e_kin = T(0.5) * (m0 * prim.ux0 + m1 * prim.ux1 + m2 * prim.ux2);
+
+
+    return {.d = prim.d, .e = e_kin + int_e, .mx0 = m0, .mx1 = m1, .mx2 = m2};
+}
+
 
 template <class View>
 struct EulerPrimArrays
@@ -389,29 +395,19 @@ KOKKOS_FUNCTION void store(
     cons_ptrs.mx1[i] = cons.mx1;
     cons_ptrs.mx2[i] = cons.mx2;
 }
-template <
-        class SimdType,
-        class ElementType,
-        class IndexType,
-        std::size_t E0,
-        std::size_t E1,
-        std::size_t E2,
-        class AP>
-KOKKOS_FUNCTION void store(
+
+template <class SimdType, class ElementType>
+KOKKOS_FORCEINLINE_FUNCTION void store(
         EulerCons<SimdType> const& cons,
-        EulerConsArrays<Kokkos::mdspan<
-                ElementType,
-                Kokkos::extents<IndexType, E0, E1, E2>,
-                Kokkos::layout_left,
-                AP>> const& cons_arrays,
-        IndexType const base) noexcept
+        EulerConsArrays<ElementType*> const& cons_ptrs,
+        std::size_t const base) noexcept
 {
     namespace KE = Kokkos::Experimental;
-    KE::simd_unchecked_store(cons.d, cons_arrays.d.data_handle() + base, KE::simd_flag_default);
-    KE::simd_unchecked_store(cons.e, cons_arrays.e.data_handle() + base, KE::simd_flag_default);
-    KE::simd_unchecked_store(cons.mx0, cons_arrays.mx0.data_handle() + base, KE::simd_flag_default);
-    KE::simd_unchecked_store(cons.mx1, cons_arrays.mx1.data_handle() + base, KE::simd_flag_default);
-    KE::simd_unchecked_store(cons.mx2, cons_arrays.mx2.data_handle() + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(cons.d, cons_ptrs.d + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(cons.e, cons_ptrs.e + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(cons.mx0, cons_ptrs.mx0 + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(cons.mx1, cons_ptrs.mx1 + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(cons.mx2, cons_ptrs.mx2 + base, KE::simd_flag_default);
 }
 template <class ElementType, class Extents, class LP, class AP>
 std::size_t size(
