@@ -73,7 +73,7 @@ void prim_to_cons_kernel(
                     Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
                     Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {nx_blocks, ny, nz}),
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k) {
-                IndexType const base = (nx_begin + bi * width) + nx * j + nx * ny * k;
+                IndexType const base = prim_arrays.d.mapping()(nx_begin + bi * width, j, k);
 
                 EulerPrim<SimdType> const prim = load<SimdType>(prim_arrays, base);
 

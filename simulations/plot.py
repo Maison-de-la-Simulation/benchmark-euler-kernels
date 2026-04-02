@@ -245,10 +245,8 @@ def compare_benchmarks(path_a, path_b, out_csv, label_a="a", label_b="b", cols=N
 
 
 FILES = {
-"skx_ref":  result_by_job_id(463476),
-    # " skx_load" : result_by_job_id(468185)
 "skx_new":  latest_result(),
 }
 plot_scalar_vs_vector(FILES, OUT_DIR)
-compare_benchmarks(FILES["skx_ref"], FILES["skx_new"], "store.csv", "ch", "new", cols=["benchmark", "size", "real_time_speedup"])
+compare_benchmarks(result_by_job_id(463476), FILES["skx_new"], "store.csv", "ch", "new", cols=["benchmark", "size", "real_time_speedup"])
 
