@@ -11,6 +11,7 @@
 #include <hllc.hpp>
 #include <init_implode.hpp>
 #include <perfect_gas.hpp>
+#include <periodic_boundary_conditions.hpp>
 #include <prim_to_cons.hpp>
 #include <time_step.hpp>
 #include <uniform_mesh.hpp>
@@ -48,7 +49,7 @@ int main(int argc, char** argv)
             Kokkos::layout_left>>(cons_alloc, nx + 2, nx + 2, nx + 2);
 
     init_implode(exec_space, prim_arrays, mesh);
-    prim_to_cons_vec(exec_space, as_const(prim_arrays), cons_arrays, eos);
+    prim_to_cons(exec_space, as_const(prim_arrays), cons_arrays, eos);
 
     exec_space.fence();
     auto const start = std::chrono::steady_clock::now();
@@ -63,6 +64,8 @@ int main(int argc, char** argv)
                 mesh,
                 riemann_solver,
                 cfl_factor * dt);
+
+        boundary_conditions_periodic(exec_space, cons_arrays, 1);
 
         cons_to_prim(exec_space, as_const(cons_arrays), prim_arrays, eos);
 

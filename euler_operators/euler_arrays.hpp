@@ -68,15 +68,13 @@ KOKKOS_FUNCTION EulerPrim<T> to_prim(EulerCons<T> const& cons, T const p) noexce
 }
 
 template <class T>
-KOKKOS_FUNCTION EulerCons<T> to_cons(EulerPrim<T> const prim, T const int_e) noexcept
+KOKKOS_FORCEINLINE_FUNCTION EulerCons<T> to_cons(EulerPrim<T> const prim, T const int_e) noexcept
 {
-    T m0 = prim.d * prim.ux0; // reused below
+    T m0 = prim.d * prim.ux0;
     T m1 = prim.d * prim.ux1;
     T m2 = prim.d * prim.ux2;
 
     T e_kin = T(0.5) * (m0 * prim.ux0 + m1 * prim.ux1 + m2 * prim.ux2);
-
-
     return {.d = prim.d, .e = e_kin + int_e, .mx0 = m0, .mx1 = m1, .mx2 = m2};
 }
 
@@ -190,7 +188,7 @@ template <
         std::size_t E1,
         std::size_t E2,
         class AP>
-KOKKOS_FUNCTION EulerPrim<SimdType> load(
+KOKKOS_FORCEINLINE_FUNCTION EulerPrim<SimdType> load(
         EulerPrimArrays<Kokkos::mdspan<
                 ElementType,
                 Kokkos::extents<IndexType, E0, E1, E2>,

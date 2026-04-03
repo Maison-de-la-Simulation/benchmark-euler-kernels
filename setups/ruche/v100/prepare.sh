@@ -3,6 +3,11 @@
 module purge
 
 module load \
+  gcc/11.2.0/gcc-4.8.5 \
+  cmake/3.28.3/gcc-11.2.0 \
+  cuda/12.2.1/gcc-11.2.0
+
+module load \
   gcc/13.4.0/gcc-15.1.0 \
   cmake/3.31.9/gcc-15.1.0 \
   cuda/12.8.1/none-none
@@ -22,7 +27,7 @@ cmake --build build-benchmark
 cmake --install build-benchmark --prefix $benchmark_ROOT
 rm -rf build-benchmark benchmark
 
-git clone --branch fix-simd-from-4.7.1 --depth 1 https://github.com/tpadioleau/kokkos.git
+git clone --branch 5.0.0 --depth 1 https://github.com/kokkos/kokkos.git
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_STANDARD=20 \

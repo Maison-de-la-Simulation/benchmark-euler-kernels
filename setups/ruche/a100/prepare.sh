@@ -11,7 +11,7 @@ export install_dir=$PWD/opt/a100
 export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
 
-# rm -rf build-benchmark benchmark build-kokkos kokkos build-a100
+rm -rf build-benchmark benchmark build-kokkos kokkos build-a100
 
 git clone --branch v1.9.4 --depth 1 https://github.com/google/benchmark.git
 cmake \
@@ -24,7 +24,7 @@ cmake --build build-benchmark
 cmake --install build-benchmark --prefix $benchmark_ROOT
 rm -rf build-benchmark benchmark
 
-git clone --branch fix-simd-from-4.7.1 --depth 1 https://github.com/tpadioleau/kokkos.git
+git clone --branch 5.0.0 --depth 1 https://github.com/kokkos/kokkos.git
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_STANDARD=20 \
