@@ -15,4 +15,4 @@ target_sources(
 
 enable_testing()
 include(GoogleTest)
-gtest_discover_tests(euler_tests)
+gtest_discover_tests(euler_tests DISCOVERY_MODE PRE_TEST)

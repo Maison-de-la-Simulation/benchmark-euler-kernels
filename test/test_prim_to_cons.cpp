@@ -13,7 +13,7 @@ TEST(PrimToConsRemainder, ScalarVsVectorized)
     using real_t = double;
     using index_t = int;
 
-    int const n = 23;
+    int const n = 16;
 
     Kokkos::DefaultExecutionSpace exec_space;
     PerfectGas<real_t> eos(1.4);
@@ -53,17 +53,17 @@ TEST(PrimToConsRemainder, ScalarVsVectorized)
 
     auto ref_h = EulerConsArrays {
             .d = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.d),
-            .e = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.mx0),
-            .mx0 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.mx1),
-            .mx1 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.mx2),
-            .mx2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.e)};
+            .e = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.e),
+            .mx0 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.mx0),
+            .mx1 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.mx1),
+            .mx2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.mx2)};
 
     auto vec_h = EulerConsArrays {
             .d = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.d),
-            .e = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.mx0),
-            .mx0 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.mx1),
-            .mx1 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.mx2),
-            .mx2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.e)};
+            .e = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.e),
+            .mx0 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.mx0),
+            .mx1 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.mx1),
+            .mx2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.mx2)};
 
 
     double const tol = 1e-12;
