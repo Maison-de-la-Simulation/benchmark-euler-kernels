@@ -1,9 +1,11 @@
 #pragma once
 
+
 #include <Kokkos_Core.hpp>
 #include <Kokkos_SIMD.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
+
 
 template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void prim_to_cons(
@@ -84,6 +86,7 @@ void prim_to_cons_kernel(
             });
 }
 
+
 template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void prim_to_cons_vec(
         Kokkos::DefaultExecutionSpace const& exec_space,
@@ -103,6 +106,7 @@ void prim_to_cons_vec(
 
     IndexType const nx = prim_arrays.d.extent(0);
     IndexType const vec_end = (nx / simd_t::size()) * simd_t::size();
+
 
     prim_to_cons_kernel<simd_t>(exec_space, prim_arrays, cons_arrays, IndexType(0), vec_end, eos);
 

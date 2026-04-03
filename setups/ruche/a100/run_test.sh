@@ -3,7 +3,7 @@
 #SBATCH --output=./slurm_out/%x.o%j
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=00:05:00
+#SBATCH --time=00:01:00
 #SBATCH --partition=gpua100
 #SBATCH --gres=gpu:1
 
@@ -18,4 +18,4 @@ cd ${SLURM_SUBMIT_DIR}
 
 mkdir -p slurm_out results/ruche/a100
 
-./build-a100/tests/eurler_test
+./build-a100/test/euler_tests

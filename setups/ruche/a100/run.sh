@@ -2,7 +2,7 @@
 #SBATCH --job-name=benchmark_a100
 #SBATCH --output=./slurm_out/%x.o%j
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=1
 #SBATCH --time=00:30:00
 #SBATCH --partition=gpua100
 #SBATCH --gres=gpu:1
