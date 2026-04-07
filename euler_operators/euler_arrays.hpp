@@ -46,14 +46,16 @@ KOKKOS_FUNCTION T kinetic_energy(EulerPrim<T> const& prim) noexcept
 template <class T>
 KOKKOS_FUNCTION T kinetic_energy(EulerCons<T> const& cons) noexcept
 {
-    return ((cons.mx0 * cons.mx0) + (cons.mx1 * cons.mx1) + (cons.mx2 * cons.mx2)) / cons.d / 2;
+    return ((cons.mx0 * cons.mx0) + (cons.mx1 * cons.mx1) + (cons.mx2 * cons.mx2)) / cons.d / T(2);
 }
 
+
 template <class T>
-KOKKOS_FUNCTION constexpr T internal_energy(EulerCons<T> const& cons) noexcept
+KOKKOS_FUNCTION T internal_energy(EulerCons<T> const& cons) noexcept
 {
     return cons.e - kinetic_energy(cons);
 }
+
 
 
 template <class T>

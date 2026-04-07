@@ -68,17 +68,19 @@ void cons_to_prim_kernel(
             Kokkos::MDRangePolicy<
                     Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
                     Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {nx_blocks, ny, nz}),
+
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k) {
-                IndexType const base = cons_arrays.d.mapping()(nx_begin + bi * width, j, k);
+                IndexType const i = nx_begin + bi * width;
+                IndexType const base = cons_arrays.d.mapping()(i, j, k);
 
                 EulerCons<SimdType> const cons = load<SimdType>(cons_arrays, base);
 
-                SimdType e_int = internal_energy(cons);
-                SimdType p = eos.pressure(cons.d, e_int);
-                EulerPrim<SimdType> const prim = to_prim(cons, p);
-
+                EulerPrim<SimdType> prim
+                        = to_prim(cons, eos.pressure(cons.d, internal_energy(cons)));
                 store<SimdType>(prim, prim_ptrs, base);
-            });
+            }
+
+    );
 }
 
 
@@ -103,8 +105,11 @@ void cons_to_prim_vec(
     IndexType const vec_end = (nx / simd_t::size()) * simd_t::size();
 
     cons_to_prim_kernel<simd_t>(exec_space, cons_arrays, prim_arrays, IndexType(0), vec_end, eos);
-
-    if (vec_end < nx) {
-        cons_to_prim_kernel<simd_scalar_t>(exec_space, cons_arrays, prim_arrays, vec_end, nx, eos);
+    static constexpr bool needs_scalar_tail = (simd_t::size() > 1);
+    if constexpr (needs_scalar_tail) {
+        if (vec_end < nx) {
+            cons_to_prim_kernel<
+                    simd_scalar_t>(exec_space, cons_arrays, prim_arrays, vec_end, nx, eos);
+        }
     }
 }
