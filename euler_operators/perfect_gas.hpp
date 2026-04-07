@@ -25,8 +25,9 @@ public:
         return pressure * S(gamma_minus_one_inv);
     }
 
-    KOKKOS_FUNCTION T pressure(T const /*density*/, T const int_e) const noexcept
+    template <class S>
+    KOKKOS_FUNCTION S pressure(S const /*density*/, S const int_e) const noexcept
     {
-        return (m_gamma - 1) * int_e;
+        return S(m_gamma - 1) * int_e;
     }
 };
