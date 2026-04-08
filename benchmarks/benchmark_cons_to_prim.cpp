@@ -89,7 +89,7 @@ void ConsToPrimWorstRem(benchmark::State& state)
     exec_space.fence();
 
     for ([[maybe_unused]] auto _ : state) {
-        cons_to_prim_vec(exec_space, as_const(cons_arrays), prim_arrays, eos);
+        cons_to_prim(exec_space, as_const(cons_arrays), prim_arrays, eos);
         exec_space.fence();
         benchmark::ClobberMemory();
     }

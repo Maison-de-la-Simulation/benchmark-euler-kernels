@@ -54,7 +54,6 @@ void prim_to_cons_kernel(
 {
     constexpr IndexType width = SimdType::size();
     IndexType const nx_blocks = (nx_end - nx_begin) / width;
-    IndexType const nx = prim_arrays.d.extent(0);
     IndexType const ny = prim_arrays.d.extent(1);
     IndexType const nz = prim_arrays.d.extent(2);
 

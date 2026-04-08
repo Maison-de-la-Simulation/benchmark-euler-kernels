@@ -26,12 +26,12 @@ public:
     template <class S>
     KOKKOS_FUNCTION S internal_energy(S const /*density*/, S const pressure) const noexcept
     {
-        return pressure * S(gamma_minus_one_inv);
+        return pressure * gamma_minus_one_inv;
     }
 
     template <class S>
     KOKKOS_FUNCTION S pressure(S const /*density*/, S const int_e) const noexcept
     {
-        return S(m_gamma - 1) * int_e;
+        return (m_gamma - 1) * int_e;
     }
 };

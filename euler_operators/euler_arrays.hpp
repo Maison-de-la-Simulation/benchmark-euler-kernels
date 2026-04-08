@@ -44,14 +44,14 @@ KOKKOS_FUNCTION T kinetic_energy(EulerPrim<T> const& prim) noexcept
 }
 
 template <class T>
-KOKKOS_FUNCTION T kinetic_energy(EulerCons<T> const& cons) noexcept
+KOKKOS_FUNCTION constexpr T kinetic_energy(EulerCons<T> const& cons) noexcept
 {
-    return ((cons.mx0 * cons.mx0) + (cons.mx1 * cons.mx1) + (cons.mx2 * cons.mx2)) / cons.d / T(2);
+    return ((cons.mx0 * cons.mx0) + (cons.mx1 * cons.mx1) + (cons.mx2 * cons.mx2)) / cons.d / 2;
 }
 
 
 template <class T>
-KOKKOS_FUNCTION T internal_energy(EulerCons<T> const& cons) noexcept
+KOKKOS_FUNCTION constexpr T internal_energy(EulerCons<T> const& cons) noexcept
 {
     return cons.e - kinetic_energy(cons);
 }
@@ -61,7 +61,7 @@ KOKKOS_FUNCTION T internal_energy(EulerCons<T> const& cons) noexcept
 template <class T>
 KOKKOS_FORCEINLINE_FUNCTION EulerPrim<T> to_prim(EulerCons<T> const cons, T const p) noexcept
 {
-    T const vol_spe = T(1) / cons.d;
+    T const vol_spe = 1 / cons.d;
     return {.d = cons.d,
             .p = p,
             .ux0 = cons.mx0 * vol_spe,
@@ -76,9 +76,10 @@ KOKKOS_FORCEINLINE_FUNCTION EulerCons<T> to_cons(EulerPrim<T> const prim, T cons
     T m1 = prim.d * prim.ux1;
     T m2 = prim.d * prim.ux2;
 
-    T e_kin = (m0 * prim.ux0 + m1 * prim.ux1 + m2 * prim.ux2) * T(0.5);
+    T e_kin = (m0 * prim.ux0 + m1 * prim.ux1 + m2 * prim.ux2) * 0.5;
     return {.d = prim.d, .e = e_kin + int_e, .mx0 = m0, .mx1 = m1, .mx2 = m2};
 }
+
 
 
 template <class View>
