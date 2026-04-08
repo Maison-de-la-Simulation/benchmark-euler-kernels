@@ -18,7 +18,8 @@ public:
     }
 
 
-    KOKKOS_FUNCTION T speed_of_sound(T const density, T const pressure) const noexcept
+    template <class S>
+    KOKKOS_FUNCTION S speed_of_sound(S const density, S const pressure) const noexcept
     {
         return Kokkos::sqrt(m_gamma * pressure / density);
     }

@@ -12,6 +12,7 @@ target_sources(
         test_main.cpp
         test_prim_to_cons.cpp
         test_cons_to_prim.cpp
+        test_time_step.cpp
 )
 
 enable_testing()

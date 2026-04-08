@@ -39,3 +39,110 @@ T time_step(
             Kokkos::Min<T>(dt));
     return dt;
 }
+
+template <class SimdType>
+struct SimdMinReducer
+{
+    using reducer = SimdMinReducer;
+    using value_type = SimdType;
+    using result_view_type = Kokkos::View<value_type, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>;
+
+private:
+    result_view_type m_value;
+
+public:
+    KOKKOS_INLINE_FUNCTION explicit SimdMinReducer(value_type& val) : m_value(&val) {}
+
+    KOKKOS_INLINE_FUNCTION void join(value_type& dst, value_type const& src) const
+    {
+        dst = Kokkos::min(dst, src);
+    }
+    KOKKOS_INLINE_FUNCTION void init(value_type& val) const
+    {
+        val = value_type(std::numeric_limits<typename SimdType::value_type>::max());
+    }
+    KOKKOS_INLINE_FUNCTION value_type& reference() const
+    {
+        return *m_value.data();
+    }
+    KOKKOS_INLINE_FUNCTION result_view_type view() const
+    {
+        return m_value;
+    }
+    KOKKOS_INLINE_FUNCTION bool references_scalar() const
+    {
+        return false;
+    }
+};
+
+template <class SimdType, class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
+T time_step_kernel(
+        Kokkos::DefaultExecutionSpace const& exec_space,
+        EulerPrimArrays<Kokkos::mdspan<
+                T const,
+                Kokkos::extents<IndexType, E0, E1, E2>,
+                Kokkos::layout_left>> const& prim_arrays,
+        PerfectGas<T> const& eos,
+        UniformMesh3d<T> const& mesh,
+        IndexType nx_begin,
+        IndexType nx_end)
+{
+    constexpr IndexType width = SimdType::size();
+    IndexType const nx_blocks = (nx_end - nx_begin) / width;
+    IndexType const ny = prim_arrays.d.extent(1);
+    IndexType const nz = prim_arrays.d.extent(2);
+
+    T const invdx0 = 1 / mesh.dx0();
+    T const invdx1 = 1 / mesh.dx1();
+    T const invdx2 = 1 / mesh.dx2();
+
+    SimdType dt_simd;
+    Kokkos::parallel_reduce(
+            "time_step_vec",
+            Kokkos::MDRangePolicy<
+                    Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
+                    Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {nx_blocks, ny, nz}),
+            KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k, SimdType & dt_loc) {
+                IndexType const base = prim_arrays.d.mapping()(nx_begin + bi * width, j, k);
+                EulerPrim<SimdType> const prim = load<SimdType>(prim_arrays, base);
+                SimdType const cs = eos.speed_of_sound(prim.d, prim.p);
+                SimdType const cx0 = cs + Kokkos::abs(prim.ux0);
+                SimdType const cx1 = cs + Kokkos::abs(prim.ux1);
+                SimdType const cx2 = cs + Kokkos::abs(prim.ux2);
+                SimdType const invdt = (cx0 * invdx0) + (cx1 * invdx1) + (cx2 * invdx2);
+                dt_loc = Kokkos::min(dt_loc, 1 / invdt);
+            },
+            SimdMinReducer<SimdType>(dt_simd));
+
+    return Kokkos::Experimental::reduce_min(dt_simd);
+}
+
+template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
+T time_step_vec(
+        Kokkos::DefaultExecutionSpace const& exec_space,
+        EulerPrimArrays<Kokkos::mdspan<
+                T const,
+                Kokkos::extents<IndexType, E0, E1, E2>,
+                Kokkos::layout_left>> const& prim_arrays,
+        PerfectGas<T> const& eos,
+        UniformMesh3d<T> const& mesh)
+{
+    namespace KE = Kokkos::Experimental;
+    using simd_t = KE::simd<T>;
+    using simd_scalar_t = KE::basic_simd<T, KE::simd_abi::scalar>;
+
+    IndexType const nx = prim_arrays.d.extent(0);
+    IndexType const vec_end = (nx / simd_t::size()) * simd_t::size();
+
+    T dt = time_step_kernel<simd_t>(exec_space, prim_arrays, eos, mesh, IndexType(0), vec_end);
+
+    static constexpr bool needs_scalar_tail = (simd_t::size() > 1);
+    if constexpr (needs_scalar_tail) {
+        if (vec_end < nx) {
+            T const dt_tail = time_step_kernel<
+                    simd_scalar_t>(exec_space, prim_arrays, eos, mesh, vec_end, nx);
+            dt = Kokkos::min(dt, dt_tail);
+        }
+    }
+    return dt;
+}
