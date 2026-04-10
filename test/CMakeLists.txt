@@ -13,6 +13,7 @@ target_sources(
         test_prim_to_cons.cpp
         test_cons_to_prim.cpp
         test_time_step.cpp
+        test_godunov.cpp
 )
 
 enable_testing()

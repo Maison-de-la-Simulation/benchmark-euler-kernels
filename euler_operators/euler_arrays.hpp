@@ -399,6 +399,20 @@ KOKKOS_FORCEINLINE_FUNCTION EulerCons<SimdType> load(
             .mx2 = SimdType(cons_arrays.mx2.data_handle() + base, KE::simd_flag_default),
     };
 }
+template <class SimdType, class T, class IndexType>
+KOKKOS_FORCEINLINE_FUNCTION EulerCons<SimdType> load(
+        EulerConsArrays<T*> const& cons_arrays,
+        IndexType const base) noexcept
+{
+    namespace KE = Kokkos::Experimental;
+    return {
+            .d = SimdType(cons_arrays.d + base, KE::simd_flag_default),
+            .e = SimdType(cons_arrays.e + base, KE::simd_flag_default),
+            .mx0 = SimdType(cons_arrays.mx0 + base, KE::simd_flag_default),
+            .mx1 = SimdType(cons_arrays.mx1 + base, KE::simd_flag_default),
+            .mx2 = SimdType(cons_arrays.mx2 + base, KE::simd_flag_default),
+    };
+}
 
 
 
