@@ -34,16 +34,16 @@ T time_step(
                 T const cx1 = cs + Kokkos::abs(prim.ux1);
                 T const cx2 = cs + Kokkos::abs(prim.ux2);
                 T const invdt = (cx0 * invdx0) + (cx1 * invdx1) + (cx2 * invdx2);
-                dt_loc = Kokkos::min(dt_loc, 1 / invdt);
+                dt_loc = Kokkos::max(dt_loc, invdt);
             },
-            Kokkos::Min<T>(dt));
-    return dt;
+            Kokkos::Max<T>(dt));
+    return 1 / dt;
 }
 
 template <class SimdType>
-struct SimdMinReducer
+struct SimdMaxReducer
 {
-    using reducer = SimdMinReducer;
+    using reducer = SimdMaxReducer;
     using value_type = SimdType;
     using result_view_type = Kokkos::View<value_type, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>;
 
@@ -51,15 +51,15 @@ private:
     result_view_type m_value;
 
 public:
-    KOKKOS_INLINE_FUNCTION explicit SimdMinReducer(value_type& val) : m_value(&val) {}
+    KOKKOS_INLINE_FUNCTION explicit SimdMaxReducer(value_type& val) : m_value(&val) {}
 
     KOKKOS_INLINE_FUNCTION void join(value_type& dst, value_type const& src) const
     {
-        dst = Kokkos::min(dst, src);
+        dst = Kokkos::max(dst, src);
     }
     KOKKOS_INLINE_FUNCTION void init(value_type& val) const
     {
-        val = value_type(std::numeric_limits<typename SimdType::value_type>::max());
+        val = value_type(std::numeric_limits<typename SimdType::value_type>::min());
     }
     KOKKOS_INLINE_FUNCTION value_type& reference() const
     {
@@ -110,11 +110,11 @@ T time_step_kernel(
                 SimdType const cx1 = cs + Kokkos::abs(prim.ux1);
                 SimdType const cx2 = cs + Kokkos::abs(prim.ux2);
                 SimdType const invdt = (cx0 * invdx0) + (cx1 * invdx1) + (cx2 * invdx2);
-                dt_loc = Kokkos::min(dt_loc, 1 / invdt);
+                dt_loc = Kokkos::max(dt_loc, invdt);
             },
-            SimdMinReducer<SimdType>(dt_simd));
+            SimdMaxReducer<SimdType>(dt_simd));
 
-    return Kokkos::Experimental::reduce_min(dt_simd);
+    return Kokkos::Experimental::reduce_max(dt_simd);
 }
 
 template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
@@ -141,8 +141,8 @@ T time_step_vec(
         if (vec_end < nx) {
             T const dt_tail = time_step_kernel<
                     simd_scalar_t>(exec_space, prim_arrays, eos, mesh, vec_end, nx);
-            dt = Kokkos::min(dt, dt_tail);
+            dt = Kokkos::max(dt, dt_tail);
         }
     }
-    return dt;
+    return 1 / dt;
 }
