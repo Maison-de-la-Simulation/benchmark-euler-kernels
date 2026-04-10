@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_NumericTraits.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 #include <uniform_mesh.hpp>
@@ -59,7 +60,9 @@ public:
     }
     KOKKOS_INLINE_FUNCTION void init(value_type& val) const
     {
-        val = value_type(std::numeric_limits<typename SimdType::value_type>::min());
+        using scalar_t = typename SimdType::value_type;
+        val = value_type(Kokkos::reduction_identity<scalar_t>::max());
+        // val = SimdType(std::numeric_limits<scalar_t>::lowest());
     }
     KOKKOS_INLINE_FUNCTION value_type& reference() const
     {
