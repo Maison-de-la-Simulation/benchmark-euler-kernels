@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <iostream>
 #include <type_traits>
 
 #include <Kokkos_Core.hpp>
@@ -28,8 +29,12 @@ void godunov(
         hllc const& riemann_solver,
         T const dt)
 {
+    namespace KE = Kokkos::Experimental;
+    using simd_t = KE::simd<T>;
+
     Kokkos::Array<T, 3> const ds = {mesh.ds0(), mesh.ds1(), mesh.ds2()};
     T const dtodv = dt / mesh.dv();
+
 
     Kokkos::parallel_for(
             "godunov",
@@ -105,7 +110,7 @@ void godunov_kernel(
         IndexType nx_end,
         PerfectGas<T> const& eos,
         UniformMesh3d<T> const& mesh,
-        hllc_vec const& riemann_solver,
+        hllc const& riemann_solver,
         T const dt)
 {
     constexpr IndexType width = SimdType::size();
@@ -206,7 +211,7 @@ void godunov_vec(
                 Kokkos::layout_left>> const& cons_arrays,
         PerfectGas<T> const& eos,
         UniformMesh3d<T> const& mesh,
-        hllc_vec const& riemann_solver,
+        hllc const& riemann_solver,
         T const dt)
 {
     namespace KE = Kokkos::Experimental;

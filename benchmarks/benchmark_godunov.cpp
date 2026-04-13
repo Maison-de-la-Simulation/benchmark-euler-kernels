@@ -45,6 +45,8 @@ void Godunov(benchmark::State& state)
     set_constant_cells_processed(state, size(cons_arrays));
     set_constant_bytes_processed(state, size_bytes(prim_arrays) + (2 * size_bytes(cons_arrays)));
 }
+
+
 void GodunovVectorized(benchmark::State& state)
 {
     auto const n = int_cast<index_t>(state.range() + 2);
@@ -68,7 +70,7 @@ void GodunovVectorized(benchmark::State& state)
     exec_space.fence();
 
     for ([[maybe_unused]] auto _ : state) {
-        godunov_vec(exec_space, as_const(prim_arrays), cons_arrays, eos, mesh, hllc_vec(), dt);
+        godunov_vec(exec_space, as_const(prim_arrays), cons_arrays, eos, mesh, hllc(), dt);
         exec_space.fence();
         benchmark::ClobberMemory();
     }
