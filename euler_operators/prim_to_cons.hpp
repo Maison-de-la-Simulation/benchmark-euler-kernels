@@ -109,11 +109,7 @@ void prim_to_cons_vec(
 
     prim_to_cons_kernel<simd_t>(exec_space, prim_arrays, cons_arrays, IndexType(0), vec_end, eos);
 
-    static constexpr bool needs_scalar_tail = (simd_t::size() > 1);
-    if constexpr (needs_scalar_tail) {
-        if (vec_end < nx) {
-            prim_to_cons_kernel<
-                    simd_scalar_t>(exec_space, prim_arrays, cons_arrays, vec_end, nx, eos);
-        }
+    if (vec_end < nx) {
+        prim_to_cons_kernel<simd_scalar_t>(exec_space, prim_arrays, cons_arrays, vec_end, nx, eos);
     }
 }

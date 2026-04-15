@@ -139,13 +139,10 @@ T time_step_vec(
 
     T dt = time_step_kernel<simd_t>(exec_space, prim_arrays, eos, mesh, IndexType(0), vec_end);
 
-    static constexpr bool needs_scalar_tail = (simd_t::size() > 1);
-    if constexpr (needs_scalar_tail) {
-        if (vec_end < nx) {
-            T const dt_tail = time_step_kernel<
-                    simd_scalar_t>(exec_space, prim_arrays, eos, mesh, vec_end, nx);
-            dt = Kokkos::max(dt, dt_tail);
-        }
+    if (vec_end < nx) {
+        T const dt_tail
+                = time_step_kernel<simd_scalar_t>(exec_space, prim_arrays, eos, mesh, vec_end, nx);
+        dt = Kokkos::max(dt, dt_tail);
     }
     return 1 / dt;
 }

@@ -218,7 +218,7 @@ void godunov_vec(
     using simd_t = KE::simd<T>;
     using simd_scalar_t = KE::basic_simd<T, KE::simd_abi::scalar>;
 
-    // Interior x-range is [1, nx-1)
+    // interior x-range is [1, nx-1)
     IndexType const nx = prim_arrays.d.extent(0);
     IndexType const nx_begin = 1;
     IndexType const nx_inner = nx - 2; // number of interior cells
@@ -236,19 +236,16 @@ void godunov_vec(
             riemann_solver,
             dt);
 
-    static constexpr bool needs_scalar_tail = (simd_t::size() > 1);
-    if constexpr (needs_scalar_tail) {
-        if (vec_end < nx_end) {
-            godunov_kernel<simd_scalar_t>(
-                    exec_space,
-                    prim_arrays,
-                    cons_arrays,
-                    vec_end,
-                    nx_end,
-                    eos,
-                    mesh,
-                    riemann_solver,
-                    dt);
-        }
+    if (vec_end < nx_end) {
+        godunov_kernel<simd_scalar_t>(
+                exec_space,
+                prim_arrays,
+                cons_arrays,
+                vec_end,
+                nx_end,
+                eos,
+                mesh,
+                riemann_solver,
+                dt);
     }
 }
