@@ -28,7 +28,7 @@ import os
 def main_loop():
     parser = argparse.ArgumentParser(description="Display a sequence of .npy files.")
     parser.add_argument("path", type=str, help="Directory or glob pattern (e.g. './*.npy')")
-    parser.add_argument("--delay", type=float, default=0.5, help="Delay between frames (seconds)")
+    parser.add_argument("--delay", type=float, default=0.1, help="Delay between frames (seconds)")
     args = parser.parse_args()
 
     # Resolve files

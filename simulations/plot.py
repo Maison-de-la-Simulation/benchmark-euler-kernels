@@ -15,12 +15,12 @@ ALL_BENCHMARKS.append("EulerSimulation")
 # ---------------------------------------------------------
 
 
-OUT_DIR = "results/plots"
+OUT_DIR = "results/plots/"
 
 import os
 import glob
 
-RES_DIR = "results/ruche/skx/"
+RES_DIR = "results/ruche/"
 
 def latest_result(res_dir=RES_DIR, pattern="*.json"):
     files = glob.glob(os.path.join(res_dir, pattern))
@@ -113,6 +113,8 @@ def plot_scalar_vs_vector(files, out_dir):
     base_names = [b for b in all_names if b + "Vectorized" in all_names]
 
     for base_name in base_names:
+        if "Godunov" not in base_name:
+            continue
         vec_name = base_name + "Vectorized"
 
         for environment, path in files.items():
@@ -199,10 +201,51 @@ def plot_scalar_vs_vector(files, out_dir):
             plt.savefig(save_name, dpi=200)
             plt.close()
 
+# def compare_benchmarks(path_a, path_b, out_csv, label_a="a", label_b="b", cols=None):
+#     df_a, _ = load_one(path_a)
+#     df_b, _ = load_one(path_b)
+
+#     merged = pd.merge(
+#         df_a,
+#         df_b,
+#         on=["benchmark", "size"],
+#         suffixes=(f"_{label_a}", f"_{label_b}"),
+#         how="inner",
+#     )
+
+
+#     merged = merged[
+#     merged.benchmark.isin(["GodunovVectorized", "Godunov"])
+#         ]
+    
+#     col ="real_time_ns"
+#     a_col = f"{col}_{label_a}"
+#     b_col = f"{col}_{label_b}"
+#     if a_col in merged and b_col in merged:
+#         merged[f"{col}_speedup"] = merged[a_col] / merged[b_col]
+
+#     if cols:
+#         merged = merged[cols]
+
+#     mean_row = merged.mean(numeric_only=True).to_frame().T
+#     mean_row["benchmark"] = "MEAN"
+#     mean_row["size"] = pd.NA
+#     merged = pd.concat([merged, mean_row], ignore_index=True)
+
+#     rounding = {c: 5 for c in merged.columns if "speedup" in c}
+#     rounding |= {c: 5 for c in merged.columns if "time" in c}
+#     rounding |= {c: 5 for c in merged.columns if "cells_per_second" in c or "bytes_per_second" in c}
+#     merged = merged.round(rounding)
+
+
+   
+#     out_csv = Path(out_csv)
+#     out_csv.parent.mkdir(parents=True, exist_ok=True)
+#     merged.to_csv(out_csv, index=False)
+#     return merged
 def compare_benchmarks(path_a, path_b, out_csv, label_a="a", label_b="b", cols=None):
     df_a, _ = load_one(path_a)
     df_b, _ = load_one(path_b)
-
     merged = pd.merge(
         df_a,
         df_b,
@@ -210,18 +253,22 @@ def compare_benchmarks(path_a, path_b, out_csv, label_a="a", label_b="b", cols=N
         suffixes=(f"_{label_a}", f"_{label_b}"),
         how="inner",
     )
+    merged = merged[
+        merged.benchmark.isin(["GodunovVectorized", "Godunov"])
+    ]
 
-    merged["real_time_speedup"] = (
-        merged[f"real_time_ns_{label_a}"] / merged[f"real_time_ns_{label_b}"]
-    )
+    # time speedup: lower is better, so a/b (b is faster if > 1)
+    time_col = "real_time_ns"
+    a_t, b_t = f"{time_col}_{label_a}", f"{time_col}_{label_b}"
+    if a_t in merged and b_t in merged:
+        merged[f"{time_col}_speedup"] = merged[a_t] / merged[b_t]
 
-    for col in ("cells_per_second", "bytes_per_second"):
-        a_col = f"{col}_{label_a}"
-        b_col = f"{col}_{label_b}"
-        if a_col in merged and b_col in merged:
-            merged[f"{col}_speedup"] = merged[b_col] / merged[a_col]
+    # bytes/s speedup: higher is better, so b/a (b is faster if > 1)
+    bw_col = "bytes_per_second"
+    a_bw, b_bw = f"{bw_col}_{label_a}", f"{bw_col}_{label_b}"
+    if a_bw in merged and b_bw in merged:
+        merged[f"{bw_col}_speedup"] = merged[b_bw] / merged[a_bw]
 
-    merged = merged[merged.benchmark == "PrimToConsVectorized"]
     if cols:
         merged = merged[cols]
 
@@ -235,8 +282,6 @@ def compare_benchmarks(path_a, path_b, out_csv, label_a="a", label_b="b", cols=N
     rounding |= {c: 5 for c in merged.columns if "cells_per_second" in c or "bytes_per_second" in c}
     merged = merged.round(rounding)
 
-
-   
     out_csv = Path(out_csv)
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     merged.to_csv(out_csv, index=False)
@@ -245,8 +290,36 @@ def compare_benchmarks(path_a, path_b, out_csv, label_a="a", label_b="b", cols=N
 
 
 FILES = {
-"skx_new":  latest_result(),
+    "skx_val":  f"{RES_DIR}skx/[511571]_skx-PrimToCons_by_val.json",
+    "skx_ref":  f"{RES_DIR}skx/[511590]_skx-PrimToCons_by_ref.json",
+    "skx_val2": f"{RES_DIR}skx/[512006]_skx-PrimToCons_by_val2.json",
+    "skx_ref2": f"{RES_DIR}skx/[512028]_skx-PrimToCons_by_ref2.json",
+    "skx_val3": f"{RES_DIR}skx/[512105]_skx-PrimToCons_by_val3.json",
+    "skx_ref3": f"{RES_DIR}skx/[512082]_skx-PrimToCons_by_ref3.json",
+    "skx_ref_ref": f"{RES_DIR}skx/[512246]_skx-PrimToCons_ref_ref.json",
 }
-plot_scalar_vs_vector(FILES, OUT_DIR)
-compare_benchmarks(result_by_job_id(463476), FILES["skx_new"], "store.csv", "ch", "new", cols=["benchmark", "size", "real_time_speedup"])
 
+
+f = {
+    # "skx-time_step": f"results/ruche/skx/[519954]_skx-TimeStep.json",
+    "skx-time_step-opti": f"results/ruche/skx/[519988]_skx-TimeStep.json",
+    "skx-time_step-opti2": f"results/ruche/skx/[520836]_skx-TimeStep.json",
+}
+
+
+g = {
+    "def" : "results/ruche/skx/tiles/[539688]_tile-def-Godunov.json",
+    "2s.8.1" : "results/ruche/skx/tiles/[539697]_tile-2s.8.1-Godunov.json",
+    "s.2.2" : "results/ruche/skx/tiles/[539704]_tile-s.2.2-Godunov.json"
+          
+}
+COLS = ["benchmark", "size", "real_time_ns_speedup", "bytes_per_second_speedup"]
+
+# godunov compare skx single thread - a100
+# compare_benchmarks( latest_result(RES_DIR + "skx/all/"),latest_result(RES_DIR + "a100/all/") , "skx-a100.csv", "skx", "a100",  cols=COLS)
+
+
+# compare_benchmarks( result_by_job_id(556118, RES_DIR + "skx/all/"),latest_result(RES_DIR + "skx/all/") , "skxm1-skxm20.csv", "skx", "a100",  cols=COLS)
+
+
+plot_scalar_vs_vector({"a100-god" : latest_result(RES_DIR + "a100/all/")}, OUT_DIR + "a100/all/")

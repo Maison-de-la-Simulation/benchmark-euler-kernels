@@ -1,11 +1,12 @@
 #!/bin/bash
 
-export CC=gcc-10
-export CXX=g++-10
+export CC=gcc-13
+export CXX=g++-13
 
-export install_dir=$PWD/opt
+export install_dir=$PWD/opt/local
 export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
+export gtest_ROOT=$install_dir/gtest
 
 git clone --branch v1.9.4 --depth 1 https://github.com/google/benchmark.git
 cmake \
@@ -18,7 +19,7 @@ cmake --build build-benchmark --parallel 4
 cmake --install build-benchmark --prefix $benchmark_ROOT
 rm -rf build-benchmark benchmark
 
-git clone --branch fix-simd-from-4.7.1 --depth 1 https://github.com/tpadioleau/kokkos.git
+git clone --branch 5.0.0 --depth 1 https://github.com/kokkos/kokkos.git
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_STANDARD=20 \
@@ -31,3 +32,16 @@ cmake \
 cmake --build build-kokkos --parallel 4
 cmake --install build-kokkos --prefix $Kokkos_ROOT
 rm -rf build-kokkos kokkos
+
+git clone --branch v1.17.0 --depth 1 https://github.com/google/googletest.git
+cmake \
+  -D CMAKE_BUILD_TYPE=Release \
+  -D CMAKE_CXX_STANDARD=20 \
+  -B build-gtest \
+  -S googletest
+cmake --build build-gtest
+cmake --install build-gtest --prefix $gtest_ROOT
+rm -rf build-gtest googletest
+
+cmake -D CMAKE_BUILD_TYPE=Release -B build-skx
+cmake --build build-local
