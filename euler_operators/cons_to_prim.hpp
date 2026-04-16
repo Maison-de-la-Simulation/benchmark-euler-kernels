@@ -105,11 +105,7 @@ void cons_to_prim_vec(
     IndexType const vec_end = (nx / simd_t::size()) * simd_t::size();
 
     cons_to_prim_kernel<simd_t>(exec_space, cons_arrays, prim_arrays, IndexType(0), vec_end, eos);
-    static constexpr bool needs_scalar_tail = (simd_t::size() > 1);
-    if constexpr (needs_scalar_tail) {
-        if (vec_end < nx) {
-            cons_to_prim_kernel<
-                    simd_scalar_t>(exec_space, cons_arrays, prim_arrays, vec_end, nx, eos);
-        }
+    if (vec_end < nx) {
+        cons_to_prim_kernel<simd_scalar_t>(exec_space, cons_arrays, prim_arrays, vec_end, nx, eos);
     }
 }
