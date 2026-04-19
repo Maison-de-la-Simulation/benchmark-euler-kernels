@@ -7,7 +7,6 @@ on:
     paths:
       - '.github/workflows/python-checks.yaml'
       - '**.py'
-      - 'bin/trailing_spaces'
   workflow_dispatch:
 
 permissions:
@@ -24,7 +23,7 @@ jobs:
           pipx install black~=25.11
       - name: Check format using black
         run: |
-          black --line-length 100 --check bin/trailing_spaces $(git ls-files '*.py')
+          black --line-length 100 --check $(git ls-files '*.py')
 
   python-lint:
     name: Python lint using pylint
@@ -37,4 +36,4 @@ jobs:
       - run: pip install matplotlib numpy pylint~=4.0
       - name: Analysing the code with pylint
         run: |
-          pylint bin/trailing_spaces $(git ls-files '*.py')
+          pylint $(git ls-files '*.py')
