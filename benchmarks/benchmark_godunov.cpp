@@ -36,14 +36,7 @@ void Godunov(benchmark::State& state)
     exec_space.fence();
 
     for ([[maybe_unused]] auto _ : state) {
-        godunov(
-                exec_space,
-                as_const(prim_arrays),
-                cons_arrays,
-                eos,
-                mesh,
-                hllc(),
-                dt);
+        godunov(exec_space, as_const(prim_arrays), cons_arrays, eos, mesh, hllc(), dt);
         exec_space.fence();
         benchmark::ClobberMemory();
     }
