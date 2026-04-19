@@ -1,0 +1,66 @@
+---
+name: Docker
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - '.github/workflows/docker.yaml'
+      - 'docker/**'
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - '.github/workflows/docker.yaml'
+      - 'docker/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  registry: ghcr.io
+  image: ${{github.repository}}
+
+
+jobs:
+  build:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write  # Required by actions/build-push-action
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
+
+      - name: Log into registry ${{env.registry}}
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ${{env.registry}}
+          username: ${{github.actor}}
+          password: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf  # v6.0.0
+        with:
+          images: ${{env.registry}}/${{env.image}}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7.1.0
+        with:
+          context: ${{github.workspace}}/docker
+          push: ${{github.event_name != 'pull_request'}}
+          tags: ${{steps.meta.outputs.tags}}
+          labels: ${{steps.meta.outputs.labels}}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
