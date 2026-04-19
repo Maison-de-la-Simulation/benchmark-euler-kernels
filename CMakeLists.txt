@@ -8,7 +8,6 @@ add_subdirectory(utils)
 
 add_subdirectory(benchmarks)
 
-
 add_subdirectory(euler_operators)
 
 add_subdirectory(simulations)
