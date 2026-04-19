@@ -1,10 +1,7 @@
 find_package(benchmark REQUIRED)
 
 add_executable(euler_benchmarks)
-target_link_libraries(
-    euler_benchmarks
-    PRIVATE benchmark::benchmark euler_operators Kokkos::kokkos
-)
+target_link_libraries(euler_benchmarks PRIVATE benchmark::benchmark euler_operators Kokkos::kokkos)
 target_sources(
     euler_benchmarks
     PRIVATE
