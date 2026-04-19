@@ -21,7 +21,7 @@ cmake \
   -B build-benchmark \
   -S benchmark
 cmake --build build-benchmark
-cmake --install build-benchmark --prefix $benchmark_ROOT
+cmake --install build-benchmark --prefix "$benchmark_ROOT"
 rm -rf build-benchmark benchmark
 
 git clone --branch fix-simd-from-4.7.1 --depth 1 https://github.com/tpadioleau/kokkos.git
@@ -35,7 +35,7 @@ cmake \
   -B build-kokkos \
   -S kokkos
 cmake --build build-kokkos
-cmake --install build-kokkos --prefix $Kokkos_ROOT
+cmake --install build-kokkos --prefix "$Kokkos_ROOT"
 rm -rf build-kokkos kokkos
 
 cmake -D CMAKE_BUILD_TYPE=Release -B build-a100

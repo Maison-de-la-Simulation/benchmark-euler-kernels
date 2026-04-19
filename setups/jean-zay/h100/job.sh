@@ -32,7 +32,7 @@ cmake \
   -B build-benchmark \
   -S benchmark
 cmake --build build-benchmark --parallel 24
-cmake --install build-benchmark --prefix $benchmark_ROOT
+cmake --install build-benchmark --prefix "$benchmark_ROOT"
 rm -rf build-benchmark benchmark
 
 cmake \
@@ -46,7 +46,7 @@ cmake \
   -B build-kokkos \
   -S kokkos
 cmake --build build-kokkos --parallel 24
-cmake --install build-kokkos --prefix $Kokkos_ROOT
+cmake --install build-kokkos --prefix "$Kokkos_ROOT"
 rm -rf build-kokkos kokkos
 
 cmake -D CMAKE_BUILD_TYPE=Release -B build-h100
