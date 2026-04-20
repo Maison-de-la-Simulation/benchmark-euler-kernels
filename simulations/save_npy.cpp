@@ -35,7 +35,7 @@ void save_npy(std::ostream& os, NpyArrayView const& view)
 {
     // Build shape string: (d0, d1, ..., dN,)
     std::string shape_str = "(";
-    for (std::size_t ext : view.shape) {
+    for (std::size_t const ext : view.shape) {
         shape_str += std::to_string(ext);
         shape_str += ", ";
     }
