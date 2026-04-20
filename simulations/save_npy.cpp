@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <numeric>
 #include <stdexcept>
 #include <string>
@@ -67,12 +68,14 @@ void save_npy(std::ostream& os, NpyArrayView const& view)
 
     // Header length + content
     os.write(reinterpret_cast<char const*>(&hlen), sizeof(hlen));
-    os.write(header_dict.data(), header_dict.size());
+    os.write(header_dict.data(), static_cast<std::streamsize>(header_dict.size()));
 
     // Raw data
     std::size_t const n_elems
             = std::accumulate(view.shape.begin(), view.shape.end(), 1ULL, std::multiplies<> {});
-    os.write(reinterpret_cast<char const*>(view.data), n_elems * view.dtype.itemsize);
+    os
+            .write(reinterpret_cast<char const*>(view.data),
+                   static_cast<std::streamsize>(n_elems * view.dtype.itemsize));
 }
 
 void save_npy(std::filesystem::path const& filename, NpyArrayView const& view)
