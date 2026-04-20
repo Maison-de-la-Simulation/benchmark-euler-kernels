@@ -142,7 +142,7 @@ void GodunovVectorizedWorstRem(benchmark::State& state)
 }
 } // namespace
 
-BENCHMARK(Godunov)->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);
-BENCHMARK(GodunovVectorized)->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);
-BENCHMARK(GodunovWorstRem)->DenseRange(7, 31, 8)->DenseRange(31, 320, 32);
-BENCHMARK(GodunovVectorizedWorstRem)->DenseRange(7, 31, 8)->DenseRange(31, 320, 32);
+BENCHMARK_RT(Godunov)->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);
+BENCHMARK_RT(GodunovVectorized)->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);
+BENCHMARK_RT(GodunovWorstRem)->DenseRange(7, 31, 8)->DenseRange(31, 320, 32);
+BENCHMARK_RT(GodunovVectorizedWorstRem)->DenseRange(7, 31, 8)->DenseRange(31, 320, 32);
