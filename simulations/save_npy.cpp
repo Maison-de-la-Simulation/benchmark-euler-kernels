@@ -63,6 +63,7 @@ void save_npy(std::ostream& os, NpyArrayView const& view)
     os.write(magic.data(), magic.size());
     std::uint8_t const major = 1;
     std::uint8_t const minor = 0;
+    // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast)
     os.write(reinterpret_cast<char const*>(&major), 1);
     os.write(reinterpret_cast<char const*>(&minor), 1);
 
@@ -76,6 +77,7 @@ void save_npy(std::ostream& os, NpyArrayView const& view)
     os
             .write(reinterpret_cast<char const*>(view.data),
                    static_cast<std::streamsize>(n_elems * view.dtype.itemsize));
+    // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
 }
 
 void save_npy(std::filesystem::path const& filename, NpyArrayView const& view)
