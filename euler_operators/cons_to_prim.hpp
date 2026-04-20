@@ -4,7 +4,6 @@
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 
-
 template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void cons_to_prim(
         Kokkos::DefaultExecutionSpace const& exec_space,
