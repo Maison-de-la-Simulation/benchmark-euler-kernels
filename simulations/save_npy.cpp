@@ -58,7 +58,8 @@ void save_npy(std::ostream& os, NpyArrayView const& view)
     auto const hlen = static_cast<std::uint16_t>(header_dict.size());
 
     // Magic + version
-    os.write("\x93NUMPY", 6);
+    std::string_view constexpr magic("\x93NUMPY");
+    os.write(magic.data(), magic.size());
     std::uint8_t const major = 1;
     std::uint8_t const minor = 0;
     os.write(reinterpret_cast<char const*>(&major), 1);
