@@ -14,7 +14,7 @@ module load \
   cuda/12.8.1/none-none
 
 set -x
-cd ${SLURM_SUBMIT_DIR}
+cd "${SLURM_SUBMIT_DIR}" || exit
 
 mkdir -p slurm_out results/ruche/a100
 
