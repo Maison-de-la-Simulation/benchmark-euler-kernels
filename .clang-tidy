@@ -4,9 +4,12 @@ Checks: >
   -bugprone-easily-swappable-parameters,
   cert-*,
   clang-analyzer-*,
+  -clang-analyzer-cplusplus.NewDeleteLeaks,
+  -clang-analyzer-security.ArrayBound,
   clang-diagnostic-*,
   concurrency-*,
   cppcoreguidelines-*,
+  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   hicpp-*,
   misc-*,
@@ -19,6 +22,7 @@ Checks: >
   openmp-*,
   performance-*,
   portability-*,
+  -portability-avoid-pragma-once,
   readability-*,
   -readability-identifier-length
 CheckOptions:

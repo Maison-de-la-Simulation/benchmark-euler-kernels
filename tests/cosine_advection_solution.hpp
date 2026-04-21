@@ -8,7 +8,7 @@ template <class T>
 KOKKOS_FUNCTION EulerPrim<T> cosine_advection_solution_1d(T const x, T const time)
 {
     T const u = 1.;
-    T const d = 1. + (0.1 * Kokkos::sin(2 * Kokkos::numbers::pi * (x - u * time)));
+    T const d = 1. + (0.1 * Kokkos::sin(2 * Kokkos::numbers::pi * (x - (u * time))));
     T const p = 10.;
     return {.d = d, .p = p, .ux0 = u, .ux1 = 0, .ux2 = 0};
 }

@@ -71,9 +71,9 @@ struct hllc
         T const rc_R = q_R.d * (S_R - un_R);
 
         // Compute acoustic star states
-        T const ustar = (q_R.p - q_L.p + rc_L * un_L - rc_R * un_R) / (rc_L - rc_R);
+        T const ustar = (q_R.p - q_L.p + (rc_L * un_L) - (rc_R * un_R)) / (rc_L - rc_R);
         T const pstar = static_cast<U>(0.5)
-                        * (q_L.p + q_R.p + rc_L * (ustar - un_L) + rc_R * (ustar - un_R));
+                        * (q_L.p + q_R.p + (rc_L * (ustar - un_L)) + (rc_R * (ustar - un_R)));
 
         T const S = ustar > 0 ? S_L : S_R;
         EulerPrim<T> const q = ustar > 0 ? q_L : q_R;
@@ -85,7 +85,7 @@ struct hllc
         T const ptot_o = S_L * S_R > 0 ? q.p : pstar;
         T const d_o = (S - un) / (S - un_o) * q.d;
         T const etot_o
-                = ((S - un) / (S - un_o) * etot) + ((ptot_o * un_o - q.p * un) / (S - ustar));
+                = ((S - un) / (S - un_o) * etot) + (((ptot_o * un_o) - (q.p * un)) / (S - ustar));
 
         EulerFlux<T> flux {};
         flux.d = d_o * un_o;

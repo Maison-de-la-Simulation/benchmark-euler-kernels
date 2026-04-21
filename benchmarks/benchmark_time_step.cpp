@@ -16,10 +16,12 @@ namespace {
 void TimeStep(benchmark::State& state)
 {
     auto const n = int_cast<index_t>(state.range());
+    std::size_t const n_z = n;
+
     PerfectGas<real_t> const eos(1.4);
     UniformMesh3d<real_t> const mesh(1., 1., 1.);
     Kokkos::DefaultExecutionSpace const exec_space;
-    EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n * n * n);
+    EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n_z * n_z * n_z);
     EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
