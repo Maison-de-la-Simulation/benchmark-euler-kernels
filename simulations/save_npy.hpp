@@ -40,7 +40,7 @@ NpyDtype convert_to_npy_dtype()
 {
     std::size_t const itemsize = sizeof(T);
     NpyByteOrder const byte_order = get_byte_order(itemsize);
-    NpyKind kind;
+    NpyKind kind = NpyKind::boolean;
 
     if constexpr (std::is_same_v<T, bool>) {
         // ── Single-byte / untyped ─────────────────────────────────────────

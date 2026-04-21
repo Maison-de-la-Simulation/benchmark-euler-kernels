@@ -36,3 +36,17 @@ jobs:
         run: if grep "#include <iostream>" $(git ls-files '*.hpp'); then exit 1; fi
       - name: Find modifications of Kokkos reserved macros
         run: if grep -E "(define|undef) KOKKOS_" $(git ls-files '*.[ch]pp'); then exit 1; fi
+
+  clang-tidy:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/maison-de-la-simulation/benchmark-euler-kernels:main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - run: |
+          cmake \
+            -D BUILD_TESTING=ON \
+            -D CMAKE_CXX_COMPILER=clang++-22 \
+            -D CMAKE_CXX_CLANG_TIDY="clang-tidy-22;-warnings-as-errors=*" \
+            -B build
+          cmake --build build --parallel 4

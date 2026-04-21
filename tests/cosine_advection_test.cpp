@@ -31,6 +31,13 @@ double compute_error(int const nx, int const ny, int const nz, int const dir)
     real_t const cfl_factor = 0.9;
     real_t const gamma = 1.4;
 
+    std::size_t const nxg_z = nx + 2;
+    std::size_t const nyg_z = ny + 2;
+    std::size_t const nzg_z = nz + 2;
+    index_t const nxg = nx + 2;
+    index_t const nyg = ny + 2;
+    index_t const nzg = nz + 2;
+
     real_t const dx = 1. / nx;
     real_t const dy = 1. / ny;
     real_t const dz = 1. / nz;
@@ -39,17 +46,17 @@ double compute_error(int const nx, int const ny, int const nz, int const dir)
     hllc const riemann_solver;
     Kokkos::DefaultExecutionSpace const exec_space;
     EulerPrimArrays const prims_alloc
-            = create_prim_arrays_1d<real_t>(exec_space, (nx + 2) * (ny + 2) * (nz + 2));
+            = create_prim_arrays_1d<real_t>(exec_space, nxg_z * nyg_z * nzg_z);
     EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
-            Kokkos::layout_left>>(prims_alloc, nx + 2, ny + 2, nz + 2);
+            Kokkos::layout_left>>(prims_alloc, nxg, nyg, nzg);
     EulerConsArrays const cons_alloc
-            = create_cons_arrays_1d<real_t>(exec_space, (nx + 2) * (ny + 2) * (nz + 2));
+            = create_cons_arrays_1d<real_t>(exec_space, nxg_z * nyg_z * nzg_z);
     EulerConsArrays const cons_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
-            Kokkos::layout_left>>(cons_alloc, nx + 2, ny + 2, nz + 2);
+            Kokkos::layout_left>>(cons_alloc, nxg, nyg, nzg);
 
     int it = 0;
     real_t t = 0;
@@ -81,11 +88,11 @@ double compute_error(int const nx, int const ny, int const nz, int const dir)
     }
 
     EulerPrimArrays const sol_alloc
-            = create_prim_arrays_1d<real_t>(exec_space, (nx + 2) * (ny + 2) * (nz + 2));
+            = create_prim_arrays_1d<real_t>(exec_space, nxg_z * nyg_z * nzg_z);
     EulerPrimArrays const sol_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
-            Kokkos::layout_left>>(sol_alloc, nx + 2, ny + 2, nz + 2);
+            Kokkos::layout_left>>(sol_alloc, nxg, nyg, nzg);
     cosine_advection_solution(exec_space, sol_arrays, mesh, t, dir);
     return compute_l1_error(exec_space, as_const(prim_arrays).d, as_const(sol_arrays).d);
 }
