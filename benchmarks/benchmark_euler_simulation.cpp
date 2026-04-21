@@ -11,7 +11,6 @@
 #include <prim_to_cons.hpp>
 #include <time_step.hpp>
 #include <uniform_mesh.hpp>
-#include "utils.hpp"
 
 #include "benchmark_utils.hpp"
 #include "index_type.hpp"

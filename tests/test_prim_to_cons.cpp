@@ -1,3 +1,5 @@
+#include <cstddef>
+
 #include <gtest/gtest.h>
 
 #include <Kokkos_Core.hpp>
@@ -14,15 +16,18 @@ TEST(PrimToConsRemainder, ScalarVsVectorized)
 
     int const n = 23;
 
-    Kokkos::DefaultExecutionSpace exec_space;
-    PerfectGas<real_t> eos(1.4);
+    Kokkos::DefaultExecutionSpace const exec_space;
+    PerfectGas<real_t> const eos(1.4);
 
-    auto prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n * n * n);
+    auto prims_alloc
+            = create_prim_arrays_1d<real_t>(exec_space, static_cast<std::size_t>(n * n * n));
     // --- allocate base ---
-    auto cons_alloc_ref = create_cons_arrays_1d<real_t>(exec_space, n * n * n);
+    auto cons_alloc_ref
+            = create_cons_arrays_1d<real_t>(exec_space, static_cast<std::size_t>(n * n * n));
 
     // --- allocate vectorized ---
-    auto cons_alloc_vec = create_cons_arrays_1d<real_t>(exec_space, n * n * n);
+    auto cons_alloc_vec
+            = create_cons_arrays_1d<real_t>(exec_space, static_cast<std::size_t>(n * n * n));
 
     auto prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
@@ -40,7 +45,7 @@ TEST(PrimToConsRemainder, ScalarVsVectorized)
             Kokkos::layout_left>>(cons_alloc_vec, n, n, n);
 
     // --- initialize with non-trivial state ---
-    EulerPrim<real_t> prim {.d = 1.0, .p = 1.0, .ux0 = 0.5, .ux1 = -0.3, .ux2 = 0.1};
+    EulerPrim<real_t> const prim {.d = 1.0, .p = 1.0, .ux0 = 0.5, .ux1 = -0.3, .ux2 = 0.1};
 
     init_from_state(exec_space, prim_arrays, prim);
     exec_space.fence();
@@ -71,7 +76,7 @@ TEST(PrimToConsRemainder, ScalarVsVectorized)
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
             for (int k = 0; k < n; ++k) {
-                int idx = i + (n * (j + n * k)); // layout_left flattening
+                int const idx = i + (n * (j + (n * k))); // layout_left flattening
 
                 ASSERT_NEAR(ref_h.d(idx), vec_h.d(idx), tol);
                 ASSERT_NEAR(ref_h.mx0(idx), vec_h.mx0(idx), tol);

@@ -68,12 +68,12 @@ void cons_to_prim_kernel(
                     Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {nx_blocks, ny, nz}),
 
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k) {
-                IndexType const i = nx_begin + bi * width;
+                IndexType const i = nx_begin + (bi * width);
                 IndexType const base = cons_arrays.d.mapping()(i, j, k);
 
                 EulerCons<SimdType> const cons = load<SimdType>(cons_arrays, base);
 
-                EulerPrim<SimdType> prim
+                EulerPrim<SimdType> const prim
                         = to_prim(cons, eos.pressure(cons.d, internal_energy(cons)));
                 store<SimdType>(prim, prim_ptrs, base);
             }
