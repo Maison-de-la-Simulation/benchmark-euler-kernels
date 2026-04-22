@@ -20,15 +20,17 @@ TEST(PrimToConsRemainder, ScalarVsVectorized)
     Kokkos::DefaultExecutionSpace const exec_space;
     PerfectGas<real_t> const eos(1.4);
 
-    auto prims_alloc
-            = create_prim_arrays_1d<real_t>(exec_space, static_cast<std::size_t>(1UL * n * n * n));
+    auto nn = static_cast<std::size_t>(n);
+    std::size_t const n3 = nn * nn * nn;
+
+
+
+    auto prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n3);
     // --- allocate base ---
-    auto cons_alloc_ref
-            = create_cons_arrays_1d<real_t>(exec_space, static_cast<std::size_t>(1UL * n * n * n));
+    auto cons_alloc_ref = create_cons_arrays_1d<real_t>(exec_space, n3);
 
     // --- allocate vectorized ---
-    auto cons_alloc_vec
-            = create_cons_arrays_1d<real_t>(exec_space, static_cast<std::size_t>(1UL * n * n * n));
+    auto cons_alloc_vec = create_cons_arrays_1d<real_t>(exec_space, n3);
 
     auto prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,

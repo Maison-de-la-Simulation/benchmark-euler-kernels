@@ -33,7 +33,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-      - run: pip install matplotlib numpy pylint~=4.0
+      - run: pip install pandas matplotlib numpy pylint~=4.0
       - name: Analysing the code with pylint
         run: |
           pylint $(git ls-files '*.py')
