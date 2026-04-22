@@ -6,8 +6,9 @@
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 #include <prim_to_cons.hpp>
+#include <utils.hpp>
 
-#include "utils.hpp"
+#include "test_utils.hpp"
 
 TEST(PrimToConsRemainder, ScalarVsVectorized)
 {
@@ -20,14 +21,14 @@ TEST(PrimToConsRemainder, ScalarVsVectorized)
     PerfectGas<real_t> const eos(1.4);
 
     auto prims_alloc
-            = create_prim_arrays_1d<real_t>(exec_space, static_cast<std::size_t>(n * n * n));
+            = create_prim_arrays_1d<real_t>(exec_space, static_cast<std::size_t>(1UL * n * n * n));
     // --- allocate base ---
     auto cons_alloc_ref
-            = create_cons_arrays_1d<real_t>(exec_space, static_cast<std::size_t>(n * n * n));
+            = create_cons_arrays_1d<real_t>(exec_space, static_cast<std::size_t>(1UL * n * n * n));
 
     // --- allocate vectorized ---
     auto cons_alloc_vec
-            = create_cons_arrays_1d<real_t>(exec_space, static_cast<std::size_t>(n * n * n));
+            = create_cons_arrays_1d<real_t>(exec_space, static_cast<std::size_t>(1UL * n * n * n));
 
     auto prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
@@ -77,12 +78,7 @@ TEST(PrimToConsRemainder, ScalarVsVectorized)
         for (int j = 0; j < n; ++j) {
             for (int k = 0; k < n; ++k) {
                 int const idx = i + (n * (j + (n * k))); // layout_left flattening
-
-                ASSERT_NEAR(ref_h.d(idx), vec_h.d(idx), tol);
-                ASSERT_NEAR(ref_h.mx0(idx), vec_h.mx0(idx), tol);
-                ASSERT_NEAR(ref_h.mx1(idx), vec_h.mx1(idx), tol);
-                ASSERT_NEAR(ref_h.mx2(idx), vec_h.mx2(idx), tol);
-                ASSERT_NEAR(ref_h.e(idx), vec_h.e(idx), tol);
+                compare(ref_h, vec_h, tol, idx);
             }
         }
     }

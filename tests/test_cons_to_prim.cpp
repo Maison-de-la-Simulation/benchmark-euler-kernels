@@ -6,8 +6,9 @@
 #include <cons_to_prim.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
+#include <utils.hpp>
 
-#include "utils.hpp"
+#include "test_utils.hpp"
 
 TEST(ConsToPrimRemainder, ScalarVsVectorized)
 {
@@ -67,11 +68,7 @@ TEST(ConsToPrimRemainder, ScalarVsVectorized)
         for (int j = 0; j < n; ++j) {
             for (int k = 0; k < n; ++k) {
                 int const idx = i + (n * (j + (n * k))); // layout_left flattening
-                ASSERT_NEAR(ref_h.d(idx), vec_h.d(idx), tol);
-                ASSERT_NEAR(ref_h.p(idx), vec_h.p(idx), tol);
-                ASSERT_NEAR(ref_h.ux0(idx), vec_h.ux0(idx), tol);
-                ASSERT_NEAR(ref_h.ux1(idx), vec_h.ux1(idx), tol);
-                ASSERT_NEAR(ref_h.ux2(idx), vec_h.ux2(idx), tol);
+                compare(ref_h, vec_h, tol, idx);
             }
         }
     }

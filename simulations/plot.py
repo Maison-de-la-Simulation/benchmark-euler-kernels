@@ -122,6 +122,7 @@ def load_one(path):
 
 def _draw_cache_lines(ax, caches):
     """Draw vertical lines on a plot indicating cache level boundaries.
+       (Read directly from Google Benchmark => only relevant for cpu.
 
     Args:
         ax: Matplotlib axis object to draw on.
@@ -226,17 +227,17 @@ def plot_throughput(ax_left, ax_bytes, s, v, caches):
     _draw_cache_lines(ax_left, caches)
 
 
-def plot_pair(s, v, caches, base_name, bm_label, out_dir):
+def plot_pair(benchmarks, caches, base_name, bm_label, out_dir):
     """Create a two-panel figure comparing scalar vs vectorized performance metrics.
 
     Args:
-        s: DataFrame of scalar benchmark results.
-        v: DataFrame of vectorized benchmark results.
+        benchmarks: Pair of DataFrames of scalar and vectorized benchmark results.
         caches: Dictionary mapping cache level to size in bytes.
         base_name: Base name of the benchmark (without "Vectorized" suffix).
         bm_label: Label for the benchmark (used in filename and title).
         out_dir: Output directory path for saving the figure.
     """
+    s, v = benchmarks
     fig, (ax_left, ax_right) = plt.subplots(1, 2, figsize=(16, 5))
 
     ax_bytes = ax_left.twinx()
@@ -306,7 +307,7 @@ def process_base_name(files, out_dir, base_name):
             print(f"skipping {base_name} for {environment}")
             continue
 
-        plot_pair(s, v, caches, base_name, bm_label, out_dir)
+        plot_pair((s, v), caches, base_name, bm_label, out_dir)
 
 
 def plot_scalar_vs_vector(files, out_dir):
