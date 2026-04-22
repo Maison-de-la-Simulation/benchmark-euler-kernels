@@ -8,8 +8,9 @@ add_subdirectory(utils)
 
 add_subdirectory(benchmarks)
 
-add_subdirectory(test)
-
 add_subdirectory(euler_operators)
 
 add_subdirectory(simulations)
+
+include(CTest)
+add_subdirectory(tests)

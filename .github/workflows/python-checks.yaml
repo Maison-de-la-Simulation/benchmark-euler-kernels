@@ -1,0 +1,39 @@
+---
+name: Python checks
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/python-checks.yaml'
+      - '**.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-format:
+    name: Python format using black
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Install dependencies
+        run: |
+          pipx install black~=25.11
+      - name: Check format using black
+        run: |
+          black --line-length 100 --check $(git ls-files '*.py')
+
+  python-lint:
+    name: Python lint using pylint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: pip install pandas matplotlib numpy pylint~=4.0
+      - name: Analysing the code with pylint
+        run: |
+          pylint $(git ls-files '*.py')

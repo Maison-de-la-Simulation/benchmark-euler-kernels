@@ -9,8 +9,9 @@
 #SBATCH --constraint=MI300
 #SBATCH --time=05:59:00
 
-# To compute in the submission directory
-cd ${SLURM_SUBMIT_DIR}
+set -ex
+
+cd "${SLURM_SUBMIT_DIR}"
 
 module purge
 

@@ -16,7 +16,7 @@ cmake \
   -B build-benchmark \
   -S benchmark
 cmake --build build-benchmark --parallel 4
-cmake --install build-benchmark --prefix $benchmark_ROOT
+cmake --install build-benchmark --prefix "$benchmark_ROOT"
 rm -rf build-benchmark benchmark
 
 git clone --branch 5.0.0 --depth 1 https://github.com/kokkos/kokkos.git
@@ -30,7 +30,7 @@ cmake \
   -B build-kokkos \
   -S kokkos
 cmake --build build-kokkos --parallel 4
-cmake --install build-kokkos --prefix $Kokkos_ROOT
+cmake --install build-kokkos --prefix "$Kokkos_ROOT"
 rm -rf build-kokkos kokkos
 
 git clone --branch v1.17.0 --depth 1 https://github.com/google/googletest.git

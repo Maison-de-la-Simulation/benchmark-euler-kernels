@@ -10,9 +10,11 @@
 #SBATCH --nodes=1
 
 module purge
-module load gcc/13.4.0/gcc-15.1.0 cmake/3.31.9/gcc-15.1.0 numactl/2.0.19/gcc-15.1.0
+module load gcc/13.4.0/gcc-15.1.0 cmake/3.31.9/gcc-15.1.0
+# numactl/2.0.19/gcc-15.1.0
 set -x
-cd ${SLURM_SUBMIT_DIR}
+cd "${SLURM_SUBMIT_DIR}" || exit
+
 mkdir -p slurm_out results/ruche/skx
 BENCHMARK_FILTER=${1:-""}
 
@@ -37,5 +39,3 @@ export OMP_PLACES=numa_domains
   --benchmark_filter="${BENCHMARK_FILTER}" \
   --benchmark_out_format=json \
   --benchmark_out=./results/ruche/skx/mt/"[${SLURM_JOB_ID}]_T20-debug${BENCHMARK_FILTER}.json"
-
-numastat -m -n $(pidof euler_benchmarks)

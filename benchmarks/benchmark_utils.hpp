@@ -5,7 +5,6 @@
 
 #include <Kokkos_Core.hpp>
 
-#define BENCHMARK_RT(func) BENCHMARK(func)->UseRealTime()
 
 
 template <class R, class T>

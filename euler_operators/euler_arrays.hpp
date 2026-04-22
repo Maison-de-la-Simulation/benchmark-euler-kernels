@@ -75,8 +75,9 @@ KOKKOS_FORCEINLINE_FUNCTION EulerCons<T> to_cons(EulerPrim<T> const prim, T cons
     T m0 = prim.d * prim.ux0;
     T m1 = prim.d * prim.ux1;
     T m2 = prim.d * prim.ux2;
+    T const half = T(0.5);
 
-    T e_kin = (m0 * prim.ux0 + m1 * prim.ux1 + m2 * prim.ux2) * 0.5;
+    T e_kin = ((m0 * prim.ux0) + (m1 * prim.ux1) + (m2 * prim.ux2)) * half;
     return {.d = prim.d, .e = e_kin + int_e, .mx0 = m0, .mx1 = m1, .mx2 = m2};
 }
 

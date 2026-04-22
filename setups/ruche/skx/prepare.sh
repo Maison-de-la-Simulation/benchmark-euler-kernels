@@ -19,15 +19,15 @@ cmake \
   -B build-benchmark \
   -S benchmark
 cmake --build build-benchmark
-cmake --install build-benchmark --prefix $benchmark_ROOT
+cmake --install build-benchmark --prefix "$benchmark_ROOT"
 rm -rf build-benchmark benchmark
 
 rm -rf build-kokkos kokkos
 
 git clone https://github.com/kokkos/kokkos.git
-cd kokkos
+cd kokkos || exit
 git checkout 7f8988b4d
-cd ..
+cd .. || exit
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_STANDARD=20 \
@@ -38,7 +38,7 @@ cmake \
   -B build-kokkos \
   -S kokkos
 cmake --build build-kokkos --parallel
-cmake --install build-kokkos --prefix $Kokkos_ROOT
+cmake --install build-kokkos --prefix "$Kokkos_ROOT"
 rm -rf build-kokkos kokkos
 
 git clone --branch v1.17.0 --depth 1 https://github.com/google/googletest.git
@@ -48,7 +48,7 @@ cmake \
   -B build-gtest \
   -S googletest
 cmake --build build-gtest
-cmake --install build-gtest --prefix $gtest_ROOT
+cmake --install build-gtest --prefix "$gtest_ROOT"
 rm -rf build-gtest googletest
 
 cmake -D CMAKE_BUILD_TYPE=Release -B build-skx

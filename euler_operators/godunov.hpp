@@ -142,7 +142,7 @@ void godunov_kernel(
                     {0, 1, 1},
                     {nx_blocks, ny - 1, nz - 1}), // nx_begin already acouting for ghost cells
             KOKKOS_LAMBDA(IndexType const bi, IndexType const j, IndexType const k) {
-                IndexType const base = prim_arrays.d.mapping()(nx_begin + bi * width, j, k);
+                IndexType const base = prim_arrays.d.mapping()(nx_begin + (bi * width), j, k);
 
                 EulerPrim<SimdType> const prim = load<SimdType>(prim_arrays, base);
                 EulerFlux<SimdType> flux {};
@@ -222,7 +222,7 @@ void godunov_vec(
     IndexType const nx = prim_arrays.d.extent(0);
     IndexType const nx_begin = 1;
     IndexType const nx_inner = nx - 2; // number of interior cells
-    IndexType const vec_end = nx_begin + (nx_inner / simd_t::size()) * simd_t::size();
+    IndexType const vec_end = nx_begin + ((nx_inner / simd_t::size()) * simd_t::size());
     IndexType const nx_end = nx - 1;
 
     godunov_kernel<simd_t>(

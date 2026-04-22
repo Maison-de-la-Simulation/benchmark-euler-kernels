@@ -13,8 +13,9 @@ module load \
   cmake/3.31.9/gcc-15.1.0 \
   cuda/12.8.1/none-none
 
-set -x
-cd ${SLURM_SUBMIT_DIR}
+set -ex
+
+cd "${SLURM_SUBMIT_DIR}"
 
 # $1 = optional base name
 RESULT_NAME=${1:-"unnamed"}

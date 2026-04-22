@@ -92,10 +92,10 @@ struct hllc
         T const rc_L = q_L.d * (S_L - un_L);
         T const rc_R = q_R.d * (S_R - un_R);
 
-        // Star region
-        T const ustar = (q_R.p - q_L.p + rc_L * un_L - rc_R * un_R) / (rc_L - rc_R);
+        // Compute acoustic star states
+        T const ustar = (q_R.p - q_L.p + (rc_L * un_L) - (rc_R * un_R)) / (rc_L - rc_R);
         T const pstar = static_cast<U>(0.5)
-                        * (q_L.p + q_R.p + rc_L * (ustar - un_L) + rc_R * (ustar - un_R));
+                        * (q_L.p + q_R.p + (rc_L * (ustar - un_L)) + (rc_R * (ustar - un_R)));
 
         // Conditions (scalar -> bool, SIMD -> mask)
         auto const cond_ustar = ustar > T(0);
@@ -104,7 +104,7 @@ struct hllc
         // Select wave speed and state
         T const S = select(cond_ustar, S_L, S_R);
 
-        EulerPrim<T> q;
+        EulerPrim<T> q {};
         q.d = select(cond_ustar, q_L.d, q_R.d);
         q.p = select(cond_ustar, q_L.p, q_R.p);
         q.ux0 = select(cond_ustar, q_L.ux0, q_R.ux0);
@@ -121,7 +121,7 @@ struct hllc
         T const d_o = (S - un) / (S - un_o) * q.d;
 
         T const etot_o
-                = ((S - un) / (S - un_o) * etot) + ((ptot_o * un_o - q.p * un) / (S - ustar));
+                = ((S - un) / (S - un_o) * etot) + (((ptot_o * un_o) - (q.p * un)) / (S - ustar));
 
         EulerFlux<T> flux {};
 
