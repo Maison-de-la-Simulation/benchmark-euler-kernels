@@ -5,11 +5,11 @@
 #include <perfect_gas.hpp>
 #include <time_step.hpp>
 #include <uniform_mesh.hpp>
+#include <utils.hpp>
 
 #include "benchmark_utils.hpp"
 #include "index_type.hpp"
 #include "real_type.hpp"
-#include "utils.hpp"
 
 namespace {
 
