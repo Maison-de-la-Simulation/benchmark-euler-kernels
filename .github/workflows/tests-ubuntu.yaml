@@ -7,9 +7,9 @@ on:
     paths:
       - '.github/workflows/tests-ubuntu.yaml'
       - '.clang-tidy'
-      - '**.cpp'
-      - '**.hpp'
-      - '**.hpp.in'
+      - '**/*.cpp'
+      - '**/*.hpp'
+      - '**/*.hpp.in'
       - 'CMakeLists.txt'
       - '**/CMakeLists.txt'
       - '**.cmake'

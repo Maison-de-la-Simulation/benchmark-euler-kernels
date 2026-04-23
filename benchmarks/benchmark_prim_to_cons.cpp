@@ -50,8 +50,8 @@ void PrimToConsVectorized(benchmark::State& state)
     auto const n = int_cast<index_t>(state.range());
     PerfectGas<real_t> const eos(1.4);
     Kokkos::DefaultExecutionSpace const exec_space;
-    auto nn = static_cast<std::size_t>(n);
-    std::size_t const n3 = nn * nn * nn;
+    auto nz = static_cast<std::size_t>(n);
+    std::size_t const n3 = nz * nz * nz;
     EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n3);
     EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
