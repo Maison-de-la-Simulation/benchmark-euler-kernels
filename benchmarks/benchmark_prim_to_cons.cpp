@@ -75,6 +75,7 @@ void PrimToConsVectorized(benchmark::State& state)
     set_constant_cells_processed(state, size(cons_arrays));
     set_constant_bytes_processed(state, size_bytes(prim_arrays) + size_bytes(cons_arrays));
 }
+
 void PrimToConsWorstRem(benchmark::State& state)
 {
     auto const n = int_cast<index_t>(state.range());
@@ -138,7 +139,6 @@ void PrimToConsWorstRemVectorized(benchmark::State& state)
     set_constant_cells_processed(state, size(cons_arrays));
     set_constant_bytes_processed(state, size_bytes(prim_arrays) + size_bytes(cons_arrays));
 }
-
 
 } // namespace
 

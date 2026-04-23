@@ -21,7 +21,6 @@ TEST(ConsToPrimRemainder, ScalarVsVectorized)
     auto nn = static_cast<std::size_t>(n);
     std::size_t const n3 = nn * nn * nn;
 
-
     auto cons_alloc = create_cons_arrays_1d<real_t>(exec_space, n3);
     // --- allocate base ---
     auto prims_alloc_ref = create_prim_arrays_1d<real_t>(exec_space, n3);

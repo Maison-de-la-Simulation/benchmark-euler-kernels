@@ -81,7 +81,6 @@ void cons_to_prim_kernel(
     );
 }
 
-
 template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void cons_to_prim_vec(
         Kokkos::DefaultExecutionSpace const& exec_space,

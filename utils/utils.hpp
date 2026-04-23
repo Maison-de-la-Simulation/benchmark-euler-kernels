@@ -28,8 +28,6 @@ void init_from_value(
             });
 }
 
-
-
 template <
         class ElementType,
         class IndexType,

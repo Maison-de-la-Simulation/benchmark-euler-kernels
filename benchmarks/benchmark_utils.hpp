@@ -5,7 +5,6 @@
 
 #include <Kokkos_Core.hpp>
 
-
 template <class R, class T>
 R int_cast(T t)
 {
@@ -14,7 +13,6 @@ R int_cast(T t)
     }
     throw std::runtime_error("Conversion cannot preserve value representation");
 }
-
 
 void set_constant_bytes_processed(benchmark::State& state, std::size_t bytes);
 
