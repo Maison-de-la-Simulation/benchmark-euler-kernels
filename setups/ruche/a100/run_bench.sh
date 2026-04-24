@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --time=00:04:00
 #SBATCH --partition=gpua100
-#SBATCH--gres=gpu:1
+#SBATCH --gres=gpu:1
 
 module purge
 module load \
