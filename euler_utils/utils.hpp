@@ -1,4 +1,5 @@
 #pragma once
+
 #include <Kokkos_Core.hpp>
 #include <euler_arrays.hpp>
 
