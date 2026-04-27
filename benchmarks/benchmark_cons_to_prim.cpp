@@ -140,6 +140,7 @@ void ConsToPrimWorstRemVectorized(benchmark::State& state)
     set_constant_cells_processed(state, size(prim_arrays));
     set_constant_bytes_processed(state, size_bytes(prim_arrays) + size_bytes(cons_arrays));
 }
+
 } // namespace
 
 BENCHMARK(ConsToPrim)->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);

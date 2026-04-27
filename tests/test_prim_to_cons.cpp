@@ -72,12 +72,7 @@ TEST(PrimToConsRemainder, ScalarVsVectorized)
 
     double const tol = 1e-12;
 
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < n; ++j) {
-            for (int k = 0; k < n; ++k) {
-                int const idx = i + (n * (j + (n * k))); // layout_left flattening
-                compare(ref_h, vec_h, tol, idx);
-            }
-        }
+    for (int idx = 0; idx < n3; ++idx) {
+        compare(ref_h, vec_h, tol, idx);
     }
 }
