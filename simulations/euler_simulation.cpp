@@ -77,7 +77,7 @@ int main(int argc, char** argv)
         if (output_freq > 0 && it % output_freq == 0) {
             int const padding = 10;
             std::stringstream ss;
-            ss << "test_" << std::setfill('0') << std::setw(padding) << it << ".npy";
+            ss << "test_vec_" << std::setfill('0') << std::setw(padding) << it << ".npy";
             std::fstream file(ss.str(), std::fstream::out);
             std::cout << "Saving " << ss.str() << ' ';
             save_npy(file, prim_arrays.p);

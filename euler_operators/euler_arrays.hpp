@@ -4,6 +4,8 @@
 #include <type_traits>
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_Macros.hpp>
+#include <Kokkos_SIMD.hpp>
 
 template <class T>
 struct EulerPrim
@@ -42,7 +44,7 @@ KOKKOS_FUNCTION T kinetic_energy(EulerPrim<T> const& prim) noexcept
 }
 
 template <class T>
-KOKKOS_FUNCTION T kinetic_energy(EulerCons<T> const& cons) noexcept
+KOKKOS_FUNCTION constexpr T kinetic_energy(EulerCons<T> const& cons) noexcept
 {
     return ((cons.mx0 * cons.mx0) + (cons.mx1 * cons.mx1) + (cons.mx2 * cons.mx2)) / cons.d / 2;
 }
@@ -54,17 +56,7 @@ KOKKOS_FUNCTION constexpr T internal_energy(EulerCons<T> const& cons) noexcept
 }
 
 template <class T>
-KOKKOS_FUNCTION EulerCons<T> to_cons(EulerPrim<T> const& prim, T const int_e) noexcept
-{
-    return {.d = prim.d,
-            .e = kinetic_energy(prim) + int_e,
-            .mx0 = prim.d * prim.ux0,
-            .mx1 = prim.d * prim.ux1,
-            .mx2 = prim.d * prim.ux2};
-}
-
-template <class T>
-KOKKOS_FUNCTION EulerPrim<T> to_prim(EulerCons<T> const& cons, T const p) noexcept
+KOKKOS_FORCEINLINE_FUNCTION EulerPrim<T> to_prim(EulerCons<T> const cons, T const p) noexcept
 {
     T const vol_spe = 1 / cons.d;
     return {.d = cons.d,
@@ -72,6 +64,18 @@ KOKKOS_FUNCTION EulerPrim<T> to_prim(EulerCons<T> const& cons, T const p) noexce
             .ux0 = cons.mx0 * vol_spe,
             .ux1 = cons.mx1 * vol_spe,
             .ux2 = cons.mx2 * vol_spe};
+}
+
+template <class T>
+KOKKOS_FORCEINLINE_FUNCTION EulerCons<T> to_cons(EulerPrim<T> const prim, T const int_e) noexcept
+{
+    T m0 = prim.d * prim.ux0;
+    T m1 = prim.d * prim.ux1;
+    T m2 = prim.d * prim.ux2;
+    T const half = T(0.5);
+
+    T e_kin = ((m0 * prim.ux0) + (m1 * prim.ux1) + (m2 * prim.ux2)) * half;
+    return {.d = prim.d, .e = e_kin + int_e, .mx0 = m0, .mx1 = m1, .mx2 = m2};
 }
 
 template <class View>
@@ -177,6 +181,32 @@ KOKKOS_FUNCTION EulerPrim<std::remove_const_t<T>> load(
 }
 
 template <
+        class SimdType,
+        class ElementType,
+        class IndexType,
+        std::size_t E0,
+        std::size_t E1,
+        std::size_t E2,
+        class AP>
+KOKKOS_FORCEINLINE_FUNCTION EulerPrim<SimdType> load(
+        EulerPrimArrays<Kokkos::mdspan<
+                ElementType,
+                Kokkos::extents<IndexType, E0, E1, E2>,
+                Kokkos::layout_left, // layout_left guarantees contiguous x-stride
+                AP>> const& prim_arrays,
+        IndexType const base) noexcept
+{
+    namespace KE = Kokkos::Experimental;
+    return {
+            .d = SimdType(prim_arrays.d.data_handle() + base, KE::simd_flag_default),
+            .p = SimdType(prim_arrays.p.data_handle() + base, KE::simd_flag_default),
+            .ux0 = SimdType(prim_arrays.ux0.data_handle() + base, KE::simd_flag_default),
+            .ux1 = SimdType(prim_arrays.ux1.data_handle() + base, KE::simd_flag_default),
+            .ux2 = SimdType(prim_arrays.ux2.data_handle() + base, KE::simd_flag_default),
+    };
+}
+
+template <
         class ElementType,
         class IndexType,
         std::size_t E0,
@@ -211,6 +241,20 @@ KOKKOS_FUNCTION void store(
     prim_ptrs.ux0[i] = prim.ux0;
     prim_ptrs.ux1[i] = prim.ux1;
     prim_ptrs.ux2[i] = prim.ux2;
+}
+
+template <class SimdType, class ElementType>
+KOKKOS_FORCEINLINE_FUNCTION void store(
+        EulerPrim<SimdType> const& prim,
+        EulerPrimArrays<ElementType*> const& prim_ptrs,
+        std::size_t const base) noexcept
+{
+    namespace KE = Kokkos::Experimental;
+    KE::simd_unchecked_store(prim.d, prim_ptrs.d + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(prim.p, prim_ptrs.p + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(prim.ux0, prim_ptrs.ux0 + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(prim.ux1, prim_ptrs.ux1 + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(prim.ux2, prim_ptrs.ux2 + base, KE::simd_flag_default);
 }
 
 template <class T>
@@ -280,16 +324,16 @@ EulerConsArrays<typename AP::data_handle_type> data_handle(
 
 template <class MdspanOut, class View>
 EulerConsArrays<MdspanOut> to_mdspan(
-        EulerConsArrays<View> const& prim_arrays,
+        EulerConsArrays<View> const& cons_arrays,
         typename MdspanOut::index_type nx,
         typename MdspanOut::index_type ny,
         typename MdspanOut::index_type nz) noexcept
 {
-    return {.d = MdspanOut(prim_arrays.d.data(), nx, ny, nz),
-            .e = MdspanOut(prim_arrays.e.data(), nx, ny, nz),
-            .mx0 = MdspanOut(prim_arrays.mx0.data(), nx, ny, nz),
-            .mx1 = MdspanOut(prim_arrays.mx1.data(), nx, ny, nz),
-            .mx2 = MdspanOut(prim_arrays.mx2.data(), nx, ny, nz)};
+    return {.d = MdspanOut(cons_arrays.d.data(), nx, ny, nz),
+            .e = MdspanOut(cons_arrays.e.data(), nx, ny, nz),
+            .mx0 = MdspanOut(cons_arrays.mx0.data(), nx, ny, nz),
+            .mx1 = MdspanOut(cons_arrays.mx1.data(), nx, ny, nz),
+            .mx2 = MdspanOut(cons_arrays.mx2.data(), nx, ny, nz)};
 }
 
 template <
@@ -328,6 +372,32 @@ KOKKOS_FUNCTION EulerCons<std::remove_const_t<T>> load(
 }
 
 template <
+        class SimdType,
+        class ElementType,
+        class IndexType,
+        std::size_t E0,
+        std::size_t E1,
+        std::size_t E2,
+        class AP>
+KOKKOS_FORCEINLINE_FUNCTION EulerCons<SimdType> load(
+        EulerConsArrays<Kokkos::mdspan<
+                ElementType,
+                Kokkos::extents<IndexType, E0, E1, E2>,
+                Kokkos::layout_left, // layout_left guarantees contiguous x-stride
+                AP>> const& cons_arrays,
+        IndexType const base) noexcept
+{
+    namespace KE = Kokkos::Experimental;
+    return {
+            .d = SimdType(cons_arrays.d.data_handle() + base, KE::simd_flag_default),
+            .e = SimdType(cons_arrays.e.data_handle() + base, KE::simd_flag_default),
+            .mx0 = SimdType(cons_arrays.mx0.data_handle() + base, KE::simd_flag_default),
+            .mx1 = SimdType(cons_arrays.mx1.data_handle() + base, KE::simd_flag_default),
+            .mx2 = SimdType(cons_arrays.mx2.data_handle() + base, KE::simd_flag_default),
+    };
+}
+
+template <
         class ElementType,
         class IndexType,
         std::size_t E0,
@@ -362,6 +432,20 @@ KOKKOS_FUNCTION void store(
     cons_ptrs.mx0[i] = cons.mx0;
     cons_ptrs.mx1[i] = cons.mx1;
     cons_ptrs.mx2[i] = cons.mx2;
+}
+
+template <class SimdType, class ElementType>
+KOKKOS_FORCEINLINE_FUNCTION void store(
+        EulerCons<SimdType> const& cons,
+        EulerConsArrays<ElementType*> const& cons_ptrs,
+        std::size_t const base) noexcept
+{
+    namespace KE = Kokkos::Experimental;
+    KE::simd_unchecked_store(cons.d, cons_ptrs.d + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(cons.e, cons_ptrs.e + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(cons.mx0, cons_ptrs.mx0 + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(cons.mx1, cons_ptrs.mx1 + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(cons.mx2, cons_ptrs.mx2 + base, KE::simd_flag_default);
 }
 
 template <class ElementType, class Extents, class LP, class AP>

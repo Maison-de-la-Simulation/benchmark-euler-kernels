@@ -4,9 +4,9 @@
 
 int main(int argc, char** argv)
 {
+    ::benchmark::MaybeReenterWithoutASLR(argc, argv);
     ::Kokkos::ScopeGuard const scope(argc, argv);
     ::benchmark::Initialize(&argc, argv);
-    ::benchmark::MaybeReenterWithoutASLR(argc, argv);
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) {
         return 1;
     }
