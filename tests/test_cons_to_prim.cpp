@@ -65,7 +65,7 @@ TEST(ConsToPrimRemainder, ScalarVsVectorized)
 
     double const tol = 1e-12;
 
-    for (int idx = 0; idx < n3; ++idx) {
+    for (int idx = 0; idx < n * n * n; ++idx) {
         compare(ref_h, vec_h, tol, idx);
     }
 }
