@@ -25,7 +25,6 @@ BENCHMARK_FILTER=${1:-""}
 
 # include SLURM_JOB_ID in the JSON output filename
 ./build-a100/benchmarks/euler_benchmarks \
-  \
   --benchmark_out_format=json \
   --benchmark_out=./results/ruche/a100/"[${SLURM_JOB_ID}]_a100-${BENCHMARK_FILTER}.json" # --benchmark_filter="${BENCHMARK_FILTER}" \
 
