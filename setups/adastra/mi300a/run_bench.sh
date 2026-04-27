@@ -12,15 +12,9 @@
 #SBATCH --threads-per-core=1
 
 module purge
-
-# A CrayPE environment version
 module load cpe/24.07
-# An architecture
-module load craype-accel-amd-gfx942 craype-x86-mi300
-# A compiler to target the architecture
-module load PrgEnv-cray
-# Some architecture related libraries and tools
-module load amd-mixed
+module load PrgEnv-amd
+module load craype-accel-amd-gfx942
 
 set -x
 cd "${SLURM_SUBMIT_DIR}" || exit
@@ -29,9 +23,13 @@ mkdir -p slurm_out results/adastra/mi300/bm_json/
 BENCHMARK_FILTER=${1:-""}
 
 export OMP_NUM_THREADS=1
+export HSA_XNACK=1
+export CXX=hipcc
 
+SAFE_FILTER=$(echo "$BENCHMARK_FILTER" | sed 's/[()|^\/]/_/g')
 ./build-mi300/benchmarks/euler_benchmarks \
-  --benchmark_dry_run \
   --benchmark_filter="${BENCHMARK_FILTER}" \
   --benchmark_out_format=json \
-  --benchmark_out=./results/adastra/mi300/bm_json/"[${SLURM_JOB_ID}]_${BENCHMARK_FILTER}.json"
+  --benchmark_out=./results/adastra/mi300/bm_json/"[${SLURM_JOB_ID}]_${SAVE_FILTER}.json"
+
+# --benchmark_dry_run \
