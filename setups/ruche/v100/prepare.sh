@@ -7,7 +7,7 @@ module load \
   cmake/3.31.9/gcc-15.1.0 \
   cuda/12.8.1/none-none
 
-export install_dir=$PWD/opt/a100
+export install_dir=$PWD/opt/v100
 export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
 
