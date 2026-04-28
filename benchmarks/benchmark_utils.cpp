@@ -1,3 +1,5 @@
+#include <string>
+
 #include <benchmark/benchmark.h>
 
 #include "benchmark_utils.hpp"
