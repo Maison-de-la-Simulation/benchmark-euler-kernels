@@ -4,7 +4,6 @@
 #include <type_traits>
 
 #include <Kokkos_Core.hpp>
-#include <Kokkos_Macros.hpp>
 #include <Kokkos_SIMD.hpp>
 
 template <class T>

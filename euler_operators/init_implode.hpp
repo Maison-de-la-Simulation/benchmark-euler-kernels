@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include <Kokkos_Core.hpp>
 #include <euler_arrays.hpp>
 #include <uniform_mesh.hpp>

@@ -1,5 +1,6 @@
 #include <cmath>
 #include <cstdlib>
+#include <string>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -9,7 +10,6 @@
 #include <euler_arrays.hpp>
 #include <godunov.hpp>
 #include <hllc.hpp>
-#include <init_implode.hpp>
 #include <perfect_gas.hpp>
 #include <periodic_boundary_conditions.hpp>
 #include <prim_to_cons.hpp>

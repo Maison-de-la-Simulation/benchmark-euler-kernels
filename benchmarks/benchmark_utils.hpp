@@ -1,9 +1,8 @@
+#include <cstddef>
 #include <stdexcept>
 #include <utility>
 
 #include <benchmark/benchmark.h>
-
-#include <Kokkos_Core.hpp>
 
 template <class R, class T>
 R int_cast(T t)

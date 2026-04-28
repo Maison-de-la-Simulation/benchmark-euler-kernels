@@ -3,10 +3,13 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
-#include <ios>
+#include <functional>
+#include <ios> // IWYU pragma: keep (std::streamsize)
+#include <limits>
 #include <numeric>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "save_npy.hpp"
@@ -82,8 +85,8 @@ void save_npy(std::ostream& os, NpyArrayView const& view)
 
 void save_npy(std::filesystem::path const& filename, NpyArrayView const& view)
 {
-    std::ofstream file(filename, std::ios::binary);
-    file.exceptions(std::ios::failbit | std::ios::badbit);
+    std::ofstream file(filename, std::ofstream::binary);
+    file.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
     save_npy(file, view);
 }
