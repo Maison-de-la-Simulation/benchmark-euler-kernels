@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-# import pandas as pd
+import pandas as pd
 
 KERNEL_BENCHMARKS = [
     "Godunov",
@@ -26,7 +26,7 @@ ALL_BENCHMARKS.append("EulerSimulation")
 
 
 OUT_DIR = "results/adastra/genoa/plots"
-RES_DIR = "results/adastra/genoa/bm_json/"
+RES_DIR = "results/adastra/genoa/bm_json/mt/"
 # OUT_DIR = "results/adastra/mi300/plots"
 # RES_DIR = "results/adastra/mi300/bm_json/"
 
@@ -283,25 +283,42 @@ def plot_time_and_speedup(ax_right, ax_speedup, bm_dfs, caches, plot_cpu_time=Tr
         loc="best",
         fontsize=9,
     )
-def plot_pair(benchmarks, caches, base_name, bm_label, out_dir):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def plot_pair(benchmarks, caches, base_name, plot_title, out_dir):
     """Create a two-panel figure comparing scalar vs vectorized performance metrics.
 
     Args:
         benchmarks: Pair of DataFrames of scalar and vectorized benchmark results.
         caches: Dictionary mapping cache level to size in bytes.
-        base_name: Base name of the benchmark (without "Vectorized" suffix).
-        bm_label: Label for the benchmark (used in filename and title).
+        base_name: Base benchmark name (used in filename).
+        plot_title: Title shown on the figure.
         out_dir: Output directory path for saving the figure.
     """
     s, v = benchmarks
+
     fig, (ax_left, ax_right) = plt.subplots(1, 2, figsize=(16, 5))
 
     ax_bytes = ax_left.twinx()
     ax_speedup = ax_right.twinx()
 
-    fig.suptitle(f"{base_name} — {bm_label}", fontsize=12)
+    # Changed: use filename-derived benchmark title only
+    fig.suptitle(plot_title, fontsize=12)
 
-    bm_dfs = (s,v)
+    bm_dfs = (s, v)
+
     plot_throughput(ax_left, ax_bytes, bm_dfs, caches)
     plot_time_and_speedup(ax_right, ax_speedup, bm_dfs, caches)
 
@@ -312,92 +329,87 @@ def plot_pair(benchmarks, caches, base_name, bm_label, out_dir):
     ax_right.set_title("Wall Time & Speedup")
 
     plt.tight_layout()
-    plt.savefig(out_dir / f"{bm_label}_{base_name}.png", dpi=200)
+
+    plt.savefig(out_dir / f"{plot_title}_{base_name}.png", dpi=200)
     plt.close()
 
 
 def get_scalar_vector(df, base_name):
-    """Extract scalar and vectorized benchmark data for a given base benchmark name.
-
-    Args:
-        df: DataFrame containing benchmark results.
-        base_name: Base name of the benchmark (without "Vectorized" suffix).
-
-    Returns:
-        A tuple of (scalar_df, vectorized_df) sorted by size.
-    """
+    """Extract scalar and vectorized benchmark data for a given benchmark name."""
     s = df[df["benchmark"] == base_name].sort_values("size")
     v = df[df["benchmark"] == base_name + "Vectorized"].sort_values("size")
     return s, v
 
 
 def collect_all_benchmarks(files):
-    """Collect all unique benchmark names from a set of result files.
-
-    Args:
-        files: Dictionary mapping environment names to file paths.
-
-    Returns:
-        A set of unique benchmark names found across all files.
-    """
+    """Collect all unique benchmark names from all result files."""
     all_names = set()
+
     for path in files.values():
         df, _ = load_one(path)
         all_names.update(df["benchmark"].unique())
+
     return all_names
 
 
-def process_base_name(files, out_dir, base_name):
-    """Process and plot scalar vs vectorized comparisons for a single benchmark.
+def extract_plot_title(path):
+    """Use filename without .json as plot title."""
+    return Path(path).stem
 
-    Args:
-        files: Dictionary mapping environment names to file paths.
-        out_dir: Output directory for saving plots.
-        base_name: Base name of the benchmark to process.
-    """
+
+def process_base_name(files, out_dir, base_name):
+    """Generate plots for one benchmark across all environments."""
     for environment, path in files.items():
         df, caches = load_one(path)
-        bm_label = extract_label(path)
+
+        # Changed: title now comes from JSON filename
+        plot_title = extract_plot_title(path)
 
         s, v = get_scalar_vector(df, base_name)
+
         if s.empty or v.empty:
             print(f"skipping {base_name} for {environment}")
             continue
 
-        plot_pair((s, v), caches, base_name, bm_label, out_dir)
+        print(plot_title)
+        plot_pair((s, v), caches, base_name, plot_title, out_dir)
 
 
- def plot_scalar_vs_vector(files, out_dir):
-     """Generate scalar vs vectorized comparison plots for all benchmarks.
+def plot_scalar_vs_vector(files, out_dir):
+    """Generate scalar vs vectorized comparison plots for all benchmarks."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-     Args:
-         files: Dictionary mapping environment names to benchmark result file paths.
-         out_dir: Output directory for saving generated plots.
-     """
-     out_dir = Path(out_dir)
-     out_dir.mkdir(parents=True, exist_ok=True)
+    all_names = collect_all_benchmarks(files)
+    base_names = [b for b in all_names if b + "Vectorized" in all_names]
 
-     all_names = collect_all_benchmarks(files)
-     base_names = [b for b in all_names if b + "Vectorized" in all_names]
-
-     for base_name in base_names:
-         process_base_name(files, out_dir, base_name)
+    for base_name in base_names:
+        process_base_name(files, out_dir, base_name)
+# %%
 
 
-def compare_benchmarks(path_a, path_b, out_csv, cols=None):
-    """Compare two benchmark results and generate a CSV with speedup metrics.
+def compare_benchmarks(path_a, path_b, out_dir, cols=None):
+    """Compare two benchmark result files and save a deterministic CSV.
+
+    Output filename format:
+        <file_a_stem>__to__<file_b_stem>.csv
 
     Args:
-        path_a: Path to the first benchmark result JSON file.
-        path_b: Path to the second benchmark result JSON file.
-        out_csv: Path to the output CSV file.
-        cols: Optional list of columns to include in the output CSV.
+        path_a: Path to first benchmark JSON file.
+        path_b: Path to second benchmark JSON file.
+        out_dir: Directory where CSV will be written.
+        cols: Optional subset of columns to keep.
 
     Returns:
-        DataFrame containing the merged and computed comparison results.
+        DataFrame containing merged comparison results.
     """
+    path_a = Path(path_a)
+    path_b = Path(path_b)
+    out_dir = Path(out_dir)
+
     df_a, _ = load_one(path_a)
     df_b, _ = load_one(path_b)
+
     merged = pd.merge(
         df_a,
         df_b,
@@ -405,44 +417,63 @@ def compare_benchmarks(path_a, path_b, out_csv, cols=None):
         suffixes=("_a", "_b"),
         how="inner",
     )
-    # merged = merged[
-    #     merged.benchmark.isin(["GodunovVectorized", "Godunov"])
-    # ]
 
-    merged["real_time_speedup"] = merged["real_time_ns_a"] / merged["real_time_ns_b"]
+    # Lower time is better
+    merged["real_time_ns_speedup"] = (
+        merged["real_time_ns_a"] / merged["real_time_ns_b"]
+    )
+    merged["cpu_time_ns_speedup"] = (
+        merged["cpu_time_ns_a"] / merged["cpu_time_ns_b"]
+    )
 
+    # Higher throughput is better
     for col in ("cells_per_second", "bytes_per_second"):
         a_col = f"{col}_a"
         b_col = f"{col}_b"
-        if a_col in merged and b_col in merged:
+
+        if a_col in merged.columns and b_col in merged.columns:
             merged[f"{col}_speedup"] = merged[b_col] / merged[a_col]
 
     if cols:
         merged = merged[cols]
 
+    # Mean summary row
     mean_row = merged.mean(numeric_only=True).to_frame().T
     mean_row["benchmark"] = "MEAN"
     mean_row["size"] = pd.NA
+
     merged = pd.concat([merged, mean_row], ignore_index=True)
 
+    # Round numeric outputs
     rounding = {c: 5 for c in merged.columns if "speedup" in c}
     rounding |= {c: 5 for c in merged.columns if "time" in c}
-    rounding |= {c: 5 for c in merged.columns if "cells_per_second" in c or "bytes_per_second" in c}
+    rounding |= {
+        c: 5
+        for c in merged.columns
+        if "cells_per_second" in c or "bytes_per_second" in c
+    }
+
     merged = merged.round(rounding)
+    path_a = Path(path_a)
+    path_b = Path(path_b)
+    out_dir = Path(out_dir)
 
-    out_csv = Path(out_csv)
-    out_csv.parent.mkdir(parents=True, exist_ok=True)
+    ts_a = path_a.stem.split("[")[1].split("]")[0]
+    ts_b = path_b.stem.split("[")[1].split("]")[0]
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_csv = out_dir / f"{ts_a}__to__{ts_b}.csv"
+
     merged.to_csv(out_csv, index=False)
+
     return merged
-
-
-# %%
 
 COLS = ["benchmark", "size", "real_time_ns_speedup", "cpu_time_ns_speedup"]
 
 FILES = {
-    "genoa": latest_result(RES_DIR)
-    # "mi300a": latest_result(RES_DIR)
+    # "genoa": latest_result(RES_DIR)
+    "genoa_base": result_by_job_id(4870888, ),
+    "genoa_t10": latest_result(RES_DIR)
 }
-plot_scalar_vs_vector(FILES, OUT_DIR)
-
+# plot_scalar_vs_vector(FILES, OUT_DIR)
+compare_benchmarks(FILES["genoa_base"], FILES["genoa_t10"], OUT_DIR, cols=COLS)
