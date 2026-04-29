@@ -146,4 +146,7 @@ void ConsToPrimWorstRemVectorized(benchmark::State& state)
 BENCHMARK(ConsToPrim)->UseRealTime()->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);
 BENCHMARK(ConsToPrimVectorized)->UseRealTime()->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);
 BENCHMARK(ConsToPrimWorstRem)->UseRealTime()->DenseRange(7, 128, 8)->DenseRange(127, 320, 32);
-BENCHMARK(ConsToPrimWorstRemVectorized)->UseRealTime()->DenseRange(7, 128, 8)->DenseRange(127, 320, 32);
+BENCHMARK(ConsToPrimWorstRemVectorized)
+        ->UseRealTime()
+        ->DenseRange(7, 128, 8)
+        ->DenseRange(127, 320, 32);
