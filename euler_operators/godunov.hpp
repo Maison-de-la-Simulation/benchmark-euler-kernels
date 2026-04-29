@@ -263,7 +263,7 @@ void godunov_opti(
                 Kokkos::layout_left>> const& cons_arrays,
         PerfectGas<T> const& eos,
         UniformMesh3d<T> const& mesh,
-        hllc_fast const& riemann_solver,
+        hllc_opti const& riemann_solver,
         T const dt)
 {
     T const ds0 = mesh.ds0();

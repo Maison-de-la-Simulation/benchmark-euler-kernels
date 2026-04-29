@@ -33,7 +33,7 @@ constexpr EulerPrim<double> shock_state {.d = 4.0, .p = 10.0, .ux0 = 1.5, .ux1 =
 constexpr double dt_default = 1e-9;
 constexpr double dt_small = 1e-10;
 
-template <class Kernel>
+template <class Kernel, class Solver>
 auto run(
         Kokkos::DefaultExecutionSpace const& exec,
         int n,
@@ -41,7 +41,8 @@ auto run(
         PerfectGas<double> const& eos,
         UniformMesh3d<double> const& mesh,
         double dt,
-        Kernel kernel)
+        Kernel kernel,
+        Solver solver)
 {
     auto const nn = static_cast<std::size_t>(n);
     std::size_t const n3 = nn * nn * nn;
@@ -63,10 +64,10 @@ auto run(
     init_from_state(exec, U, to_cons(prim, eos.internal_energy(prim.d, prim.p)));
 
     exec.fence();
-    kernel(exec, as_const(P), U, eos, mesh, hllc {}, dt);
+    kernel(exec, as_const(P), U, eos, mesh, solver, dt);
     exec.fence();
 
-    return std::pair {prims_alloc, cons_alloc};
+    return cons_alloc;
 }
 
 void run_case(int n, double dt, EulerPrim<double> const& prim)
@@ -75,35 +76,53 @@ void run_case(int n, double dt, EulerPrim<double> const& prim)
     PerfectGas<real_t> const eos(1.4);
     UniformMesh3d<real_t> const mesh(1., 1., 1.);
 
-    auto [prims_ref, cons_ref]
-            = run(exec,
-                  n,
-                  prim,
-                  eos,
-                  mesh,
-                  dt,
-                  [](auto const& exec,
-                     auto const& P,
-                     auto& U,
-                     auto const& eos,
-                     auto const& mesh,
-                     auto solver,
-                     double dt) { godunov(exec, P, U, eos, mesh, solver, dt); });
+    auto cons_ref = run(
+            exec,
+            n,
+            prim,
+            eos,
+            mesh,
+            dt,
+            [](auto const& exec,
+               auto const& P,
+               auto& U,
+               auto const& eos,
+               auto const& mesh,
+               auto solver,
+               double dt) { godunov(exec, P, U, eos, mesh, solver, dt); },
+            hllc {});
 
-    auto [prims_vec, cons_vec]
-            = run(exec,
-                  n,
-                  prim,
-                  eos,
-                  mesh,
-                  dt,
-                  [](auto const& exec,
-                     auto const& P,
-                     auto& U,
-                     auto const& eos,
-                     auto const& mesh,
-                     auto solver,
-                     double dt) { godunov_vec(exec, P, U, eos, mesh, solver, dt); });
+    auto cons_vec = run(
+            exec,
+            n,
+            prim,
+            eos,
+            mesh,
+            dt,
+            [](auto const& exec,
+               auto const& P,
+               auto& U,
+               auto const& eos,
+               auto const& mesh,
+               auto solver,
+               double dt) { godunov_vec(exec, P, U, eos, mesh, solver, dt); },
+            hllc {});
+
+    auto cons_opti = run(
+            exec,
+            n,
+            prim,
+            eos,
+            mesh,
+            dt,
+            [](auto const& exec,
+               auto const& P,
+               auto& U,
+               auto const& eos,
+               auto const& mesh,
+               auto solver,
+               double dt) { godunov_opti(exec, P, U, eos, mesh, solver, dt); },
+            hllc_opti {});
 
     auto ref_h = EulerConsArrays {
             .d = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_ref.d),
@@ -119,13 +138,22 @@ void run_case(int n, double dt, EulerPrim<double> const& prim)
             .mx1 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_vec.mx1),
             .mx2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_vec.mx2)};
 
+    auto opti_h = EulerConsArrays {
+            .d = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_opti.d),
+            .e = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_opti.e),
+            .mx0 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_opti.mx0),
+            .mx1 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_opti.mx1),
+            .mx2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_opti.mx2)};
+
     double const tol = 1e-12;
 
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
             for (int k = 0; k < n; ++k) {
                 int const idx = i + (n * (j + (n * k)));
+
                 compare(ref_h, vec_h, tol, idx);
+                compare(ref_h, opti_h, tol, idx);
             }
         }
     }
@@ -133,7 +161,7 @@ void run_case(int n, double dt, EulerPrim<double> const& prim)
 
 } // namespace
 
-TEST_P(GodunovTest, ScalarVsVectorized)
+TEST_P(GodunovTest, ScalarVectorizedOptimizedAgree)
 {
     auto const& c = GetParam();
     run_case(c.n, c.dt, c.prim);
