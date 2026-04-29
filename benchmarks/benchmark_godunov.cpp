@@ -55,4 +55,4 @@ void Godunov(benchmark::State& state)
 
 } // namespace
 
-BENCHMARK(Godunov)->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);
+BENCHMARK(Godunov)->UseRealTime()->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);
