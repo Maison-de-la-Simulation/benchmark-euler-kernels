@@ -142,7 +142,10 @@ void PrimToConsWorstRemVectorized(benchmark::State& state)
 
 } // namespace
 
-BENCHMARK(PrimToCons)->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);
-BENCHMARK(PrimToConsVectorized)->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);
-BENCHMARK(PrimToConsWorstRem)->DenseRange(7, 128, 8)->DenseRange(127, 320, 32);
-BENCHMARK(PrimToConsWorstRemVectorized)->DenseRange(7, 128, 8)->DenseRange(127, 320, 32);
+BENCHMARK(PrimToCons)->UseRealTime()->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);
+BENCHMARK(PrimToConsVectorized)->UseRealTime()->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);
+BENCHMARK(PrimToConsWorstRem)->UseRealTime()->DenseRange(7, 128, 8)->DenseRange(127, 320, 32);
+BENCHMARK(PrimToConsWorstRemVectorized)
+        ->UseRealTime()
+        ->DenseRange(7, 128, 8)
+        ->DenseRange(127, 320, 32);
