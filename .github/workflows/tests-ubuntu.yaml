@@ -72,7 +72,7 @@ jobs:
       - run: |
           cmake --build build --target all all_verify_interface_header_sets --parallel 4
 
-  test-benchmarks:
+  tests:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/maison-de-la-simulation/benchmark-euler-kernels:main
