@@ -143,3 +143,87 @@ struct hllc
         return flux;
     }
 };
+struct hllc_opti
+{
+    template <std::size_t Dir, class T, class U>
+    KOKKOS_FORCEINLINE_FUNCTION EulerFlux<T> operator()(
+            std::integral_constant<std::size_t, Dir> dir,
+            PerfectGas<U> const& eos,
+            EulerPrim<T> const& q_L,
+            EulerPrim<T> const& q_R) const noexcept
+    {
+        using detail::select;
+
+        static_assert(Dir < 3);
+
+        T const un_L = get(dir, q_L);
+        T const un_R = get(dir, q_R);
+
+
+        T const c_L = eos.speed_of_sound(q_L.d, q_L.p);
+        T const c_R = eos.speed_of_sound(q_R.d, q_R.p);
+
+        T const cmax = Kokkos::max(c_L, c_R);
+
+        T const S_L = Kokkos::min(un_L, un_R) - cmax;
+        T const S_R = Kokkos::max(un_L, un_R) + cmax;
+
+        T const rcL = q_L.d * (S_L - un_L);
+        T const rcR = q_R.d * (S_R - un_R);
+
+        T const inv_rc = T(1) / (rcL - rcR);
+
+        T const ustar = (q_R.p - q_L.p + rcL * un_L - rcR * un_R) * inv_rc;
+
+        T const pstar = T(0.5) * (q_L.p + q_R.p + rcL * (ustar - un_L) + rcR * (ustar - un_R));
+
+        auto const useL = ustar > T(0);
+        auto const same = (S_L * S_R) > T(0);
+
+        T const S = select(useL, S_L, S_R);
+
+        T const d = select(useL, q_L.d, q_R.d);
+        T const p = select(useL, q_L.p, q_R.p);
+        T const ux0 = select(useL, q_L.ux0, q_R.ux0);
+        T const ux1 = select(useL, q_L.ux1, q_R.ux1);
+        T const ux2 = select(useL, q_L.ux2, q_R.ux2);
+
+        T const un = select(useL, un_L, un_R);
+
+        T const eint = eos.internal_energy(d, p);
+        T const ke = T(0.5) * d * (ux0 * ux0 + ux1 * ux1 + ux2 * ux2);
+        T const etot = eint + ke;
+
+        T const uno = select(same, un, ustar);
+        T const po = select(same, p, pstar);
+
+        T const inv1 = T(1) / (S - uno);
+        T const fac = (S - un) * inv1;
+
+        T const dout = fac * d;
+
+        T const inv2 = T(1) / (S - ustar);
+
+        T const eout = (fac * etot) + (((po * uno) - (p * un)) * inv2);
+
+        T const mom = dout * uno;
+
+        EulerFlux<T> f {};
+
+        f.d = mom;
+        f.e = (eout + po) * uno;
+        f.mx0 = mom * ux0;
+        f.mx1 = mom * ux1;
+        f.mx2 = mom * ux2;
+
+        if constexpr (Dir == 0) {
+            f.mx0 = (mom * uno) + po;
+        } else if constexpr (Dir == 1) {
+            f.mx1 = (mom * uno) + po;
+        } else {
+            f.mx2 = (mom * uno) + po;
+        }
+
+        return f;
+    }
+};
