@@ -72,4 +72,4 @@ void EulerSimulation(benchmark::State& state)
 
 } // namespace
 
-BENCHMARK(EulerSimulation)->DenseRange(16, 320, 32);
+BENCHMARK(EulerSimulation)->UseRealTime()->DenseRange(16, 320, 32);
