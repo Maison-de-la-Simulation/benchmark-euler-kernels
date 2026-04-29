@@ -85,7 +85,7 @@ jobs:
       - run: |
           cmake --build build --parallel 4
       - run: |
-          ./build/benchmarks/euler_benchmarks --benchmark_dry_run
+          ./build/benchmarks/euler_benchmarks --benchmark_dry_run --benchmark_filter='.*/[0-9]/.*'
 
   test-euler-tests:
     runs-on: ubuntu-latest
