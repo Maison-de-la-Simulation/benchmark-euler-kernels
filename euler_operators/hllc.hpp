@@ -66,7 +66,6 @@ KOKKOS_FUNCTION T select(Mask const& mask, T const& a, T const& b)
 
 } // namespace detail
 
-
 struct hllc
 {
     template <std::size_t Dir, class T, class U>
@@ -143,6 +142,7 @@ struct hllc
         return flux;
     }
 };
+
 struct hllc_opti
 {
     template <std::size_t Dir, class T, class U>
@@ -158,7 +158,6 @@ struct hllc_opti
 
         T const un_L = get(dir, q_L);
         T const un_R = get(dir, q_R);
-
 
         T const c_L = eos.speed_of_sound(q_L.d, q_L.p);
         T const c_R = eos.speed_of_sound(q_R.d, q_R.p);

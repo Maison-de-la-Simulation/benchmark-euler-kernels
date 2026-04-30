@@ -158,18 +158,19 @@ void GodunovVectorizedWorstRem(benchmark::State& state)
     set_constant_cells_processed(state, size(cons_arrays));
     set_constant_bytes_processed(state, size_bytes(prim_arrays) + (2 * size_bytes(cons_arrays)));
 }
+
 } // namespace
 
 BENCHMARK(Godunov)
         ->UseRealTime()
         ->DenseRange(8, 31, 8)
-        ->DenseRange(32, 127, 16) // MI300 specific
+        ->DenseRange(32, 127, 16)
         ->DenseRange(128, 320, 32);
 
 BENCHMARK(GodunovVectorized)
         ->UseRealTime()
         ->DenseRange(8, 31, 8)
-        ->DenseRange(32, 127, 16) // MI300 specific
+        ->DenseRange(32, 127, 16)
         ->DenseRange(128, 320, 32);
 
 BENCHMARK(GodunovWorstRem)->UseRealTime()->DenseRange(7, 31, 8)->DenseRange(31, 320, 32);

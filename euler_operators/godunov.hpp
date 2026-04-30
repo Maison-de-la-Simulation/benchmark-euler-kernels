@@ -35,7 +35,6 @@ void godunov(
     Kokkos::Array<T, 3> const ds = {mesh.ds0(), mesh.ds1(), mesh.ds2()};
     T const dtodv = dt / mesh.dv();
 
-
     Kokkos::parallel_for(
             "godunov",
             Kokkos::MDRangePolicy<
@@ -95,6 +94,7 @@ void godunov(
                 store(cons, cons_arrays, i, j, k);
             });
 }
+
 template <class SimdType, class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void godunov_kernel(
         Kokkos::DefaultExecutionSpace const& exec_space,
@@ -196,7 +196,6 @@ void godunov_kernel(
                 store<SimdType>(cons, cons_ptrs, base);
             });
 }
-
 
 template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void godunov_vec(

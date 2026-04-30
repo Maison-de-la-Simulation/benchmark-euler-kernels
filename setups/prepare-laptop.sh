@@ -40,7 +40,7 @@ cmake \
   -B build-gtest \
   -S googletest
 cmake --build build-gtest
-cmake --install build-gtest --prefix $gtest_ROOT
+cmake --install build-gtest --prefix "$gtest_ROOT"
 rm -rf build-gtest googletest
 
 cmake -D CMAKE_BUILD_TYPE=Release -B build-skx

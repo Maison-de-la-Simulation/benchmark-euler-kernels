@@ -15,7 +15,6 @@ TEST(TimeStepRemainderWorstRem, ScalarVsVectorized)
     auto const nn = static_cast<std::size_t>(n);
     std::size_t const n3 = nn * nn * nn;
 
-
     Kokkos::DefaultExecutionSpace const exec_space;
     PerfectGas<real_t> const eos(1.4);
     UniformMesh3d<real_t> const mesh(1., 1., 1.);

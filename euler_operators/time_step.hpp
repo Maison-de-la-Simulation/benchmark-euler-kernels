@@ -60,20 +60,24 @@ public:
     {
         dst = Kokkos::max(dst, src);
     }
+
     KOKKOS_INLINE_FUNCTION void init(value_type& val) const
     {
         using scalar_t = SimdType::value_type;
         val = value_type(Kokkos::reduction_identity<scalar_t>::max());
         // val = SimdType(std::numeric_limits<scalar_t>::lowest());
     }
+
     KOKKOS_INLINE_FUNCTION value_type& reference() const
     {
         return *m_value.data();
     }
+
     KOKKOS_INLINE_FUNCTION result_view_type view() const
     {
         return m_value;
     }
+
     KOKKOS_INLINE_FUNCTION bool references_scalar() const
     {
         return false;

@@ -26,7 +26,7 @@ export OMP_NUM_THREADS=1
 export HSA_XNACK=1
 export CXX=hipcc
 
-SAFE_FILTER=$(echo "$BENCHMARK_FILTER" | sed 's/[()|^\/]/_/g')
+SAVE_FILTER=$(echo "$BENCHMARK_FILTER" | sed 's/[()|^\/]/_/g')
 ./build-mi300/benchmarks/euler_benchmarks \
   --benchmark_filter="${BENCHMARK_FILTER}" \
   --benchmark_out_format=json \
