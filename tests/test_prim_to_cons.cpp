@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <string>
 
 #include <gtest/gtest.h>
 
@@ -22,8 +23,6 @@ TEST(PrimToConsRemainder, ScalarVsVectorized)
 
     auto nn = static_cast<std::size_t>(n);
     std::size_t const n3 = nn * nn * nn;
-
-
 
     auto prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n3);
     // --- allocate base ---
@@ -72,16 +71,9 @@ TEST(PrimToConsRemainder, ScalarVsVectorized)
             .mx1 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.mx1),
             .mx2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.mx2)};
 
-
     double const tol = 1e-12;
 
-
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < n; ++j) {
-            for (int k = 0; k < n; ++k) {
-                int const idx = i + (n * (j + (n * k))); // layout_left flattening
-                compare(ref_h, vec_h, tol, idx);
-            }
-        }
+    for (int idx = 0; idx < n * n * n; ++idx) {
+        compare(ref_h, vec_h, tol, idx);
     }
 }

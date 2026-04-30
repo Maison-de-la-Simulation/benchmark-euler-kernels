@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=bench_a100
+#SBATCH --job-name=bench_skx
 #SBATCH --output=./slurm_out/%x.o%j
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=00:10:00
+#SBATCH --time=00:04:00
 #SBATCH --partition=gpua100
-#SBATCH--gres=gpu:1
+#SBATCH --gres=gpu:1
 
 module purge
 module load \
@@ -25,8 +25,8 @@ BENCHMARK_FILTER=${1:-""}
 
 # include SLURM_JOB_ID in the JSON output filename
 ./build-a100/benchmarks/euler_benchmarks \
-  \
   --benchmark_out_format=json \
-  --benchmark_out=./results/ruche/a100/"[${SLURM_JOB_ID}]_a100-${BENCHMARK_FILTER}.json"
+  --benchmark_out=./results/ruche/a100/"[${SLURM_JOB_ID}]_a100-${BENCHMARK_FILTER}.json" # --benchmark_filter="${BENCHMARK_FILTER}" \
 
-# --benchmark_filter="${BENCHMARK_FILTER}" \
+##SBATCH --exclusive
+##SBATCH --hint=nomultithread

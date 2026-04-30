@@ -2,3 +2,8 @@
 
 # Maximum number of characters on a single line.
 max-line-length=100
+
+[MESSAGES CONTROL]
+
+# Disable line-too-long, duplicate of black
+disable=line-too-long

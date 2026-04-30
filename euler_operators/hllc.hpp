@@ -173,9 +173,9 @@ struct hllc_opti
 
         T const inv_rc = T(1) / (rcL - rcR);
 
-        T const ustar = (q_R.p - q_L.p + rcL * un_L - rcR * un_R) * inv_rc;
+        T const ustar = (q_R.p - q_L.p + (rcL * un_L) - (rcR * un_R)) * inv_rc;
 
-        T const pstar = T(0.5) * (q_L.p + q_R.p + rcL * (ustar - un_L) + rcR * (ustar - un_R));
+        T const pstar = T(0.5) * (q_L.p + q_R.p + (rcL * (ustar - un_L)) + (rcR * (ustar - un_R)));
 
         auto const useL = ustar > T(0);
         auto const same = (S_L * S_R) > T(0);
@@ -191,7 +191,7 @@ struct hllc_opti
         T const un = select(useL, un_L, un_R);
 
         T const eint = eos.internal_energy(d, p);
-        T const ke = T(0.5) * d * (ux0 * ux0 + ux1 * ux1 + ux2 * ux2);
+        T const ke = T(0.5) * d * ((ux0 * ux0) + (ux1 * ux1) + (ux2 * ux2));
         T const etot = eint + ke;
 
         T const uno = select(same, un, ustar);

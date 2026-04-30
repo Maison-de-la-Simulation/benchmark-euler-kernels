@@ -46,7 +46,6 @@ void boundary_conditions_periodic(
             Kokkos::subview(view, ALL, Kokkos::make_pair(view.extent(1) - gw, view.extent(1)), ALL),
             Kokkos::subview(view, ALL, Kokkos::make_pair(gw, 2 * gw), ALL));
 
-
     // dim 2
     Kokkos::deep_copy(
             exec_space,
@@ -61,7 +60,6 @@ void boundary_conditions_periodic(
             Kokkos::subview(view, ALL, ALL, Kokkos::make_pair(view.extent(2) - gw, view.extent(2))),
             Kokkos::subview(view, ALL, ALL, Kokkos::make_pair(gw, 2 * gw)));
 }
-
 
 template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void boundary_conditions_periodic(

@@ -1,8 +1,11 @@
 #include <chrono>
+#include <cstddef>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
-#include <ostream>
+#include <ostream> // IWYU pragma: keep (std::flush)
 #include <sstream>
+#include <string>
 
 #include <Kokkos_Core.hpp>
 #include <cons_to_prim.hpp>

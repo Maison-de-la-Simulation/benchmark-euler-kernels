@@ -3,7 +3,7 @@
 #SBATCH --output=./slurm_out/%x.o%j
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=00:04:00
+#SBATCH --time=00:01:00
 #SBATCH --partition=gpua100
 #SBATCH --gres=gpu:1
 

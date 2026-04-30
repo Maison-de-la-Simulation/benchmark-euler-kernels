@@ -7,11 +7,11 @@
 #include <perfect_gas.hpp>
 #include <time_step.hpp>
 #include <uniform_mesh.hpp>
+#include <utils.hpp>
 
 #include "benchmark_utils.hpp"
 #include "index_type.hpp"
 #include "real_type.hpp"
-#include "utils.hpp"
 
 namespace {
 
@@ -51,7 +51,6 @@ void TimeStepVectorized(benchmark::State& state)
     auto nn = static_cast<std::size_t>(n);
     std::size_t const n3 = nn * nn * nn;
 
-
     EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n3);
     EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
@@ -73,5 +72,5 @@ void TimeStepVectorized(benchmark::State& state)
 
 } // namespace
 
-BENCHMARK(TimeStep)->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);
-BENCHMARK(TimeStepVectorized)->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);
+BENCHMARK(TimeStep)->UseRealTime()->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);
+BENCHMARK(TimeStepVectorized)->UseRealTime()->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);

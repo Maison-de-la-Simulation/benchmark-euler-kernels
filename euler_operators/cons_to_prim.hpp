@@ -1,6 +1,9 @@
 #pragma once
 
+#include <cstddef>
+
 #include <Kokkos_Core.hpp>
+#include <Kokkos_SIMD.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 
@@ -66,21 +69,13 @@ void cons_to_prim_kernel(
             Kokkos::MDRangePolicy<
                     Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
                     Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {nx_blocks, ny, nz}),
-
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k) {
-                IndexType const i = nx_begin + (bi * width);
-                IndexType const base = cons_arrays.d.mapping()(i, j, k);
-
-                EulerCons<SimdType> const cons = load<SimdType>(cons_arrays, base);
-
-                EulerPrim<SimdType> const prim
-                        = to_prim(cons, eos.pressure(cons.d, internal_energy(cons)));
+                IndexType const base = cons_arrays.d.mapping()(nx_begin + (bi * width), j, k);
+                EulerCons const cons = load<SimdType>(cons_arrays, base);
+                EulerPrim const prim = to_prim(cons, eos.pressure(cons.d, internal_energy(cons)));
                 store<SimdType>(prim, prim_ptrs, base);
-            }
-
-    );
+            });
 }
-
 
 template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void cons_to_prim_vec(

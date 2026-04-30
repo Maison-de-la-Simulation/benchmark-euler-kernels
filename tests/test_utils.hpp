@@ -4,7 +4,6 @@
 
 #include <euler_arrays.hpp>
 
-
 template <class T>
 void compare(EulerPrimArrays<T> const& ref, EulerPrimArrays<T> const& vec, double tol, int idx)
 {

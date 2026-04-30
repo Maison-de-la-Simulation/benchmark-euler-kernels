@@ -52,6 +52,7 @@ void Godunov(benchmark::State& state)
     set_constant_cells_processed(state, size(cons_arrays));
     set_constant_bytes_processed(state, size_bytes(prim_arrays) + (2 * size_bytes(cons_arrays)));
 }
+
 void GodunovWorstRem(benchmark::State& state)
 {
     auto const n = int_cast<index_t>(state.range() + 2);
@@ -60,7 +61,6 @@ void GodunovWorstRem(benchmark::State& state)
     real_t const dt = 1E-9;
     auto nn = static_cast<std::size_t>(n);
     std::size_t const n3 = nn * nn * nn;
-
 
     Kokkos::DefaultExecutionSpace const exec_space;
     EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n3);
@@ -88,7 +88,6 @@ void GodunovWorstRem(benchmark::State& state)
     set_constant_bytes_processed(state, size_bytes(prim_arrays) + (2 * size_bytes(cons_arrays)));
 }
 
-
 void GodunovVectorized(benchmark::State& state)
 {
     auto const n = int_cast<index_t>(state.range() + 2);
@@ -97,7 +96,6 @@ void GodunovVectorized(benchmark::State& state)
     real_t const dt = 1E-9;
     auto nn = static_cast<std::size_t>(n);
     std::size_t const n3 = nn * nn * nn;
-
 
     Kokkos::DefaultExecutionSpace const exec_space;
     EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n3);
@@ -124,6 +122,7 @@ void GodunovVectorized(benchmark::State& state)
     set_constant_cells_processed(state, size(cons_arrays));
     set_constant_bytes_processed(state, size_bytes(prim_arrays) + (2 * size_bytes(cons_arrays)));
 }
+
 void GodunovVectorizedWorstRem(benchmark::State& state)
 {
     auto const n = int_cast<index_t>(state.range() + 2);
@@ -166,7 +165,6 @@ BENCHMARK(Godunov)
         ->DenseRange(8, 31, 8)
         ->DenseRange(32, 127, 16) // MI300 specific
         ->DenseRange(128, 320, 32);
-
 
 BENCHMARK(GodunovVectorized)
         ->UseRealTime()

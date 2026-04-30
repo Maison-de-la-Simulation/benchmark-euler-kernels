@@ -78,8 +78,6 @@ void EulerSimulationVectorized(benchmark::State& state)
     auto nn = static_cast<std::size_t>(nx) + 2;
     std::size_t const n3 = nn * nn * nn;
 
-
-
     real_t const dx = 1. / static_cast<real_t>(nx);
     PerfectGas<real_t> const eos(gamma);
     UniformMesh3d<real_t> const mesh(dx, dx, dx);
@@ -121,5 +119,5 @@ void EulerSimulationVectorized(benchmark::State& state)
 }
 } // namespace
 
-BENCHMARK(EulerSimulation)->DenseRange(16, 320, 32);
-BENCHMARK(EulerSimulationVectorized)->DenseRange(16, 320, 32);
+BENCHMARK(EulerSimulation)->UseRealTime()->UseRealTime()->DenseRange(16, 320, 32);
+BENCHMARK(EulerSimulationVectorized)->UseRealTime()->DenseRange(16, 320, 32);

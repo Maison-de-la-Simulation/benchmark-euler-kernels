@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-# import pandas as pd
+import pandas as pd
 
 KERNEL_BENCHMARKS = [
     "Godunov",
@@ -25,11 +25,8 @@ ALL_BENCHMARKS = KERNEL_BENCHMARKS
 ALL_BENCHMARKS.append("EulerSimulation")
 
 
-OUT_DIR = "results/adastra/genoa/plots"
-RES_DIR = "results/adastra/genoa/bm_json/"
-# OUT_DIR = "results/adastra/mi300/plots"
-# RES_DIR = "results/adastra/mi300/bm_json/"
-
+OUT_DIR = "results/plots"
+RES_DIR = "results/ruche/skx/"
 
 
 def latest_result(res_dir=RES_DIR, pattern="*.json"):
@@ -46,14 +43,10 @@ def latest_result(res_dir=RES_DIR, pattern="*.json"):
         FileNotFoundError: If no files matching the pattern are found.
     """
     files = glob.glob(os.path.join(res_dir, pattern))
-
+    print(files)
     if not files:
         raise FileNotFoundError(f"No files matching {pattern} in {res_dir}")
-
-    # sort by modification time (newest first)
-    files = sorted(files, key=os.path.getmtime, reverse=True)
-
-    return files[0]
+    return max(files, key=os.path.getmtime)
 
 
 def result_by_job_id(job_id, res_dir=RES_DIR):
@@ -118,11 +111,10 @@ def load_one(path):
         rows.append(
             {
                 "benchmark": name.split("/")[0],
-                "size": int(name.split("/")[-2]),
+                "size": int(name.split("/")[-1]),
                 "cells_per_second": b.get("cells_per_second"),
                 "bytes_per_second": b.get("bytes_per_second"),
                 "real_time_ns": b.get("real_time"),
-                "cpu_time_ns": b.get("cpu_time"),
             }
         )
     return pd.DataFrame(rows), caches
@@ -171,74 +163,20 @@ def _plot_series(ax, df_series, color, label, y_key):
         alpha=0.5,
     )
 
-    ax.plot(
-        df_series["size"],
-        df_series[y_key],
-        color=color,
-        label=label,
-        alpha=0.5,
-    )
 
-
-
-def plot_throughput(ax_left, ax_bytes, bm_dfs, caches):
-    """Plot throughput comparison (cells/s and bytes/s) between scalar and vectorized.
+def plot_time_and_speedup(ax_right, ax_speedup, s, v, caches):
+    """Plot wall time and speedup comparison between scalar and vectorized implementations.
 
     Args:
-        ax_left: Matplotlib axis for cells per second plot.
-        ax_bytes: Secondary axis for bytes per second overlay.
-        bm_dfs: Tuple of (scalar_df, vectorized_df).
+        ax_right: Matplotlib axis for wall time plot.
+        ax_speedup: Secondary axis for speedup overlay.
+        s: DataFrame of scalar benchmark results.
+        v: DataFrame of vectorized benchmark results.
         caches: Dictionary mapping cache level to size in bytes.
     """
-    s, v = bm_dfs
+    _plot_series(ax_right, s, "C0", "scalar ns", "real_time_ns")
+    _plot_series(ax_right, v, "C1", "vectorized ns", "real_time_ns")
 
-    for df_series, color, label in [
-        (s, "C0", "scalar"),
-        (v, "C1", "vectorized"),
-    ]:
-        _plot_series(ax_left, df_series, color, f"{label} cells/s", "cells_per_second")
-        _plot_series(ax_bytes, df_series, color, f"{label} bytes/s", "bytes_per_second")
-
-    _draw_cache_lines(ax_left, caches)
-
-    # --- Axis labels ---
-    ax_left.set_ylabel("Cells per second")
-    ax_bytes.set_ylabel("Bytes per second")
-
-    # --- Combined legend (both axes) ---
-    handles_left, labels_left = ax_left.get_legend_handles_labels()
-
-    ax_left.legend(
-        handles_left,
-        labels_left,
-        loc="best",
-        fontsize=9,
-    )
-
-
-def plot_time_and_speedup(ax_right, ax_speedup, bm_dfs, caches, plot_cpu_time=True):
-    """Plot wall time and (optionally) CPU time + speedup comparison."""
-
-    s, v = bm_dfs
-
-    # --- Wall time (solid lines) ---
-    _plot_series(ax_right, s, "C0", "scalar (wall ns)", "real_time_ns")
-    _plot_series(ax_right, v, "C1", "vectorized (wall ns)", "real_time_ns")
-
-    # --- CPU time (dashed lines, optional) ---
-    if plot_cpu_time:
-        ax_right.plot(
-            s["size"], s["cpu_time_ns"],
-            linestyle="--", color="C0",
-            label="scalar (cpu ns)", linewidth=1.2
-        )
-        ax_right.plot(
-            v["size"], v["cpu_time_ns"],
-            linestyle="--", color="C1",
-            label="vectorized (cpu ns)", linewidth=1.2
-        )
-
-    # --- Speedup ---
     merged = pd.merge(
         s[["size", "real_time_ns"]],
         v[["size", "real_time_ns"]],
@@ -266,23 +204,29 @@ def plot_time_and_speedup(ax_right, ax_speedup, bm_dfs, caches, plot_cpu_time=Tr
     )
     ax_speedup.axhline(1.0, linestyle=":", color="C2", alpha=0.5)
 
-    # --- Cache markers ---
     _draw_cache_lines(ax_right, caches)
 
-    # --- Axis labels ---
-    ax_right.set_ylabel("Time (ns)")
-    ax_speedup.set_ylabel("Speedup (×)")
 
-    # --- Combined legend (both axes) ---
-    handles_r, labels_r = ax_right.get_legend_handles_labels()
-    handles_s, labels_s = ax_speedup.get_legend_handles_labels()
+def plot_throughput(ax_left, ax_bytes, s, v, caches):
+    """Plot throughput comparison (cells/s and bytes/s) between scalar and vectorized.
 
-    ax_right.legend(
-        handles_r + handles_s,
-        labels_r + labels_s,
-        loc="best",
-        fontsize=9,
-    )
+    Args:
+        ax_left: Matplotlib axis for cells per second plot.
+        ax_bytes: Secondary axis for bytes per second overlay.
+        s: DataFrame of scalar benchmark results.
+        v: DataFrame of vectorized benchmark results.
+        caches: Dictionary mapping cache level to size in bytes.
+    """
+    for df_series, color, label in [
+        (s, "C0", "scalar"),
+        (v, "C1", "vectorized"),
+    ]:
+        _plot_series(ax_left, df_series, color, f"{label} cells/s", "cells_per_second")
+        _plot_series(ax_bytes, df_series, color, f"{label} bytes/s", "bytes_per_second")
+
+    _draw_cache_lines(ax_left, caches)
+
+
 def plot_pair(benchmarks, caches, base_name, bm_label, out_dir):
     """Create a two-panel figure comparing scalar vs vectorized performance metrics.
 
@@ -301,9 +245,8 @@ def plot_pair(benchmarks, caches, base_name, bm_label, out_dir):
 
     fig.suptitle(f"{base_name} — {bm_label}", fontsize=12)
 
-    bm_dfs = (s,v)
-    plot_throughput(ax_left, ax_bytes, bm_dfs, caches)
-    plot_time_and_speedup(ax_right, ax_speedup, bm_dfs, caches)
+    plot_throughput(ax_left, ax_bytes, s, v, caches)
+    plot_time_and_speedup(ax_right, ax_speedup, s, v, caches)
 
     ax_left.set_xlabel("n (cube width in cells)")
     ax_right.set_xlabel("n (cube width in cells)")
@@ -367,21 +310,21 @@ def process_base_name(files, out_dir, base_name):
         plot_pair((s, v), caches, base_name, bm_label, out_dir)
 
 
- def plot_scalar_vs_vector(files, out_dir):
-     """Generate scalar vs vectorized comparison plots for all benchmarks.
+def plot_scalar_vs_vector(files, out_dir):
+    """Generate scalar vs vectorized comparison plots for all benchmarks.
 
-     Args:
-         files: Dictionary mapping environment names to benchmark result file paths.
-         out_dir: Output directory for saving generated plots.
-     """
-     out_dir = Path(out_dir)
-     out_dir.mkdir(parents=True, exist_ok=True)
+    Args:
+        files: Dictionary mapping environment names to benchmark result file paths.
+        out_dir: Output directory for saving generated plots.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-     all_names = collect_all_benchmarks(files)
-     base_names = [b for b in all_names if b + "Vectorized" in all_names]
+    all_names = collect_all_benchmarks(files)
+    base_names = [b for b in all_names if b + "Vectorized" in all_names]
 
-     for base_name in base_names:
-         process_base_name(files, out_dir, base_name)
+    for base_name in base_names:
+        process_base_name(files, out_dir, base_name)
 
 
 def compare_benchmarks(path_a, path_b, out_csv, cols=None):
@@ -398,6 +341,7 @@ def compare_benchmarks(path_a, path_b, out_csv, cols=None):
     """
     df_a, _ = load_one(path_a)
     df_b, _ = load_one(path_b)
+
     merged = pd.merge(
         df_a,
         df_b,
@@ -405,9 +349,6 @@ def compare_benchmarks(path_a, path_b, out_csv, cols=None):
         suffixes=("_a", "_b"),
         how="inner",
     )
-    # merged = merged[
-    #     merged.benchmark.isin(["GodunovVectorized", "Godunov"])
-    # ]
 
     merged["real_time_speedup"] = merged["real_time_ns_a"] / merged["real_time_ns_b"]
 
@@ -417,6 +358,7 @@ def compare_benchmarks(path_a, path_b, out_csv, cols=None):
         if a_col in merged and b_col in merged:
             merged[f"{col}_speedup"] = merged[b_col] / merged[a_col]
 
+    merged = merged[merged.benchmark == "PrimToConsVectorized"]
     if cols:
         merged = merged[cols]
 
@@ -438,11 +380,15 @@ def compare_benchmarks(path_a, path_b, out_csv, cols=None):
 
 # %%
 
-COLS = ["benchmark", "size", "real_time_ns_speedup", "cpu_time_ns_speedup"]
 
 FILES = {
-    "genoa": latest_result(RES_DIR)
-    # "mi300a": latest_result(RES_DIR)
+    "skx_new": latest_result("."),
 }
 plot_scalar_vs_vector(FILES, OUT_DIR)
-
+COLS = ["benchmark", "size", "real_time_speedup"]
+compare_benchmarks(
+    FILES["skx_new"],
+    FILES["skx_new"],
+    "store.csv",
+    cols=COLS,
+)
