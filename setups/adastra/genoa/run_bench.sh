@@ -30,17 +30,11 @@ export OMP_PLACES=THREADS
 export OMP_DISPLAY_AFFINITY=TRUE
 export OMP_AFFINITY_FORMAT="thread %0.3n -> cpu %A"
 export KOKKOS_NUM_THREADS=10
-numactl -H
-
-srun bash -c 'echo $SLURM_CPUS_PER_TASK; grep Cpus_allowed_list /proc/self/status'
 
 SAFE_FILTER=$(echo "$BENCHMARK_FILTER" | sed 's/[()|^\/]/_/g')
 
 ./build-genoa/benchmarks/euler_benchmarks \
+  --benchmark_dry_run \
   --benchmark_filter="${BENCHMARK_FILTER}" \
   --benchmark_out_format=json \
   --benchmark_out=./results/adastra/genoa/bm_json/mt/"[${SLURM_JOB_ID}]_T${OMP_NUM_THREADS}-${OMP_PROC_BIND}-${OMP_PLACES}_${SAFE_FILTER}.json"
-
-#
-#
-# ./build-genoa/simulations/euler_simulation
