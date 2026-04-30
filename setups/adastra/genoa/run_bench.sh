@@ -20,7 +20,7 @@ module load PrgEnv-cray
 set -x
 cd "${SLURM_SUBMIT_DIR}" || exit
 
-mkdir -p slurm_out results/adastra/genoa/mt/
+mkdir -p slurm_out results/bm_json/adastra/
 BENCHMARK_FILTER=${1:-""}
 
 export OMP_NUM_THREADS=1
@@ -36,5 +36,5 @@ export OMP_NUM_THREADS=1
 ./build-genoa/benchmarks/euler_benchmarks \
   --benchmark_filter="${BENCHMARK_FILTER}" \
   --benchmark_out_format=json \
-  --benchmark_out=./results/adastra/genoa/bm_json/"[${SLURM_JOB_ID}]_BASE_${BENCHMARK_FILTER}.json"
+  --benchmark_out=./results/bm_json/adastra/"[${SLURM_JOB_ID}]_BASE_${BENCHMARK_FILTER}.json"
 # --benchmark_out=./results/adastra/genoa/bm_json/mt/"[${SLURM_JOB_ID}]_T${OMP_NUM_THREADS}-${OMP_PROC_BIND}-${OMP_PLACES}_${BENCHMARK_FILTER}.json"

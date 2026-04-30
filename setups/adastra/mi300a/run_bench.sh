@@ -19,7 +19,7 @@ module load craype-accel-amd-gfx942
 set -x
 cd "${SLURM_SUBMIT_DIR}" || exit
 
-mkdir -p slurm_out results/adastra/mi300/bm_json/
+mkdir -p slurm_out results/bm_json/adastra/
 BENCHMARK_FILTER=${1:-""}
 
 export OMP_NUM_THREADS=1
@@ -30,6 +30,6 @@ SAVE_FILTER=$(echo "$BENCHMARK_FILTER" | sed 's/[()|^\/]/_/g')
 ./build-mi300/benchmarks/euler_benchmarks \
   --benchmark_filter="${BENCHMARK_FILTER}" \
   --benchmark_out_format=json \
-  --benchmark_out=./results/adastra/mi300/bm_json/"[${SLURM_JOB_ID}]_${SAVE_FILTER}.json"
+  --benchmark_out=./results/adastra/mi300/bm_json/"[${SLURM_JOB_ID}]_mi300_${SAVE_FILTER}.json"
 
 # --benchmark_dry_run \
