@@ -93,12 +93,11 @@ struct hllc
 
         // Compute acoustic star states
         T const ustar = (q_R.p - q_L.p + (rc_L * un_L) - (rc_R * un_R)) / (rc_L - rc_R);
-        T const pstar = static_cast<U>(0.5)
-                        * (q_L.p + q_R.p + (rc_L * (ustar - un_L)) + (rc_R * (ustar - un_R)));
+        T const pstar = 0.5 * (q_L.p + q_R.p + (rc_L * (ustar - un_L)) + (rc_R * (ustar - un_R)));
 
         // Conditions (scalar -> bool, SIMD -> mask)
-        auto const cond_ustar = ustar > T(0);
-        auto const cond_SR = S_L * S_R > T(0);
+        auto const cond_ustar = ustar > 0;
+        auto const cond_SR = S_L * S_R > 0;
 
         // Select wave speed and state
         T const S = select(cond_ustar, S_L, S_R);
@@ -170,14 +169,14 @@ struct hllc_opti
         T const rcL = q_L.d * (S_L - un_L);
         T const rcR = q_R.d * (S_R - un_R);
 
-        T const inv_rc = T(1) / (rcL - rcR);
+        T const inv_rc = 1 / (rcL - rcR);
 
         T const ustar = (q_R.p - q_L.p + (rcL * un_L) - (rcR * un_R)) * inv_rc;
 
-        T const pstar = T(0.5) * (q_L.p + q_R.p + (rcL * (ustar - un_L)) + (rcR * (ustar - un_R)));
+        T const pstar = 0.5 * (q_L.p + q_R.p + (rcL * (ustar - un_L)) + (rcR * (ustar - un_R)));
 
-        auto const useL = ustar > T(0);
-        auto const same = (S_L * S_R) > T(0);
+        auto const useL = ustar > 0;
+        auto const same = (S_L * S_R) > 0;
 
         T const S = select(useL, S_L, S_R);
 
@@ -190,18 +189,18 @@ struct hllc_opti
         T const un = select(useL, un_L, un_R);
 
         T const eint = eos.internal_energy(d, p);
-        T const ke = T(0.5) * d * ((ux0 * ux0) + (ux1 * ux1) + (ux2 * ux2));
+        T const ke = 0.5 * d * ((ux0 * ux0) + (ux1 * ux1) + (ux2 * ux2));
         T const etot = eint + ke;
 
         T const uno = select(same, un, ustar);
         T const po = select(same, p, pstar);
 
-        T const inv1 = T(1) / (S - uno);
+        T const inv1 = 1 / (S - uno);
         T const fac = (S - un) * inv1;
 
         T const dout = fac * d;
 
-        T const inv2 = T(1) / (S - ustar);
+        T const inv2 = 1 / (S - ustar);
 
         T const eout = (fac * etot) + (((po * uno) - (p * un)) * inv2);
 
