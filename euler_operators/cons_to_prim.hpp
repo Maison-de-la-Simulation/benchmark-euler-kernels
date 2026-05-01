@@ -56,13 +56,7 @@ void cons_to_prim_kernel(
     IndexType const ny = cons_arrays.d.extent(1);
     IndexType const nz = cons_arrays.d.extent(2);
 
-    T* pd = prim_arrays.d.data_handle();
-    T* pp = prim_arrays.p.data_handle();
-    T* pu0 = prim_arrays.ux0.data_handle();
-    T* pu1 = prim_arrays.ux1.data_handle();
-    T* pu2 = prim_arrays.ux2.data_handle();
-
-    auto const prim_ptrs = EulerPrimArrays<T*> {pd, pp, pu0, pu1, pu2};
+    EulerPrimArrays const prim_ptrs = data_handle(prim_arrays);
 
     Kokkos::parallel_for(
             "cons_to_prim_kernel",

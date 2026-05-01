@@ -55,13 +55,7 @@ void prim_to_cons_kernel(
     IndexType const ny = prim_arrays.d.extent(1);
     IndexType const nz = prim_arrays.d.extent(2);
 
-    T* cd = cons_arrays.d.data_handle();
-    T* ce = cons_arrays.e.data_handle();
-    T* cm0 = cons_arrays.mx0.data_handle();
-    T* cm1 = cons_arrays.mx1.data_handle();
-    T* cm2 = cons_arrays.mx2.data_handle();
-
-    auto const cons_ptrs = EulerConsArrays<T*> {cd, ce, cm0, cm1, cm2};
+    EulerConsArrays const cons_ptrs = data_handle(cons_arrays);
 
     Kokkos::parallel_for(
             "prim_to_cons_kernel",
