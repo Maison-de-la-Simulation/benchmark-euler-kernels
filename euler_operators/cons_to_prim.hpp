@@ -56,6 +56,7 @@ void cons_to_prim_kernel(
     IndexType const ny = cons_arrays.d.extent(1);
     IndexType const nz = cons_arrays.d.extent(2);
 
+    Kokkos::layout_left::mapping const common_mapping = cons_arrays.d.mapping();
     EulerPrimArrays const prim_ptrs = data_handle(prim_arrays);
 
     Kokkos::parallel_for(
@@ -64,7 +65,7 @@ void cons_to_prim_kernel(
                     Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
                     Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {nx_blocks, ny, nz}),
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k) {
-                IndexType const base = cons_arrays.d.mapping()(nx_begin + (bi * width), j, k);
+                IndexType const base = common_mapping(nx_begin + (bi * width), j, k);
                 EulerCons const cons = load<SimdType>(cons_arrays, base);
                 EulerPrim const prim = to_prim(cons, eos.pressure(cons.d, internal_energy(cons)));
                 store<SimdType>(prim, prim_ptrs, base);
