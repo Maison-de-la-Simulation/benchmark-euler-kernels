@@ -9,6 +9,7 @@ target_sources(
                 godunov.hpp
                 hllc.hpp
                 init_implode.hpp
+                parallel_for_team.hpp
                 perfect_gas.hpp
                 periodic_boundary_conditions.hpp
                 prim_to_cons.hpp
