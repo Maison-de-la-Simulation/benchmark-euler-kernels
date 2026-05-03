@@ -32,7 +32,7 @@ struct NpyDtype
     NpyKind kind;
     std::size_t itemsize; // in bytes
 
-    std::string str() const;
+    [[nodiscard]] std::string str() const;
 };
 
 template <typename T>
