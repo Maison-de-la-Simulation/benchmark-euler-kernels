@@ -44,6 +44,7 @@ T time_step(
 }
 
 namespace detail {
+
 template <class SimdType>
 struct SimdMaxReducer
 {
