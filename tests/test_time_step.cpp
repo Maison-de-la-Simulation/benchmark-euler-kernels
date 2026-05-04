@@ -1,5 +1,3 @@
-#include <cstddef>
-
 #include <gtest/gtest.h>
 
 #include <Kokkos_Core.hpp>
@@ -33,8 +31,6 @@ TEST(TimeStepRemainderWorstRem, ScalarVsVectorized)
 
     real_t const dt_ref = time_step(exec_space, as_const(prim_arrays), eos, mesh);
     real_t const dt_vec = time_step_vec(exec_space, as_const(prim_arrays), eos, mesh);
-    std::cout << "dt_ref = " << dt_ref << '\n';
-    std::cout << "dt_vec = " << dt_vec << '\n';
     exec_space.fence();
 
     ASSERT_NEAR(dt_ref, dt_vec, 1e-12);
@@ -64,8 +60,6 @@ TEST(TimeStep, ScalarVsVectorized)
 
     real_t const dt_ref = time_step(exec_space, as_const(prim_arrays), eos, mesh);
     real_t const dt_vec = time_step_vec(exec_space, as_const(prim_arrays), eos, mesh);
-    std::cout << "dt_ref = " << dt_ref << '\n';
-    std::cout << "dt_vec = " << dt_vec << '\n';
 
     exec_space.fence();
 

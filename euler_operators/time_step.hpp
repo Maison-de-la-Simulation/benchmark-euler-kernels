@@ -103,6 +103,9 @@ T time_step_kernel(
     T const invdx1 = 1 / mesh.dx1();
     T const invdx2 = 1 / mesh.dx2();
 
+    Kokkos::layout_left::mapping const common_mapping = prim_arrays.d.mapping();
+    EulerPrimArrays const prim_ptrs = data_handle(prim_arrays);
+
     SimdType dt_simd {};
     Kokkos::parallel_reduce(
             "time_step_vec",
@@ -110,8 +113,8 @@ T time_step_kernel(
                     Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
                     Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {nx_blocks, ny, nz}),
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k, SimdType & dt_loc) {
-                IndexType const base = prim_arrays.d.mapping()(nx_begin + (bi * width), j, k);
-                EulerPrim<SimdType> const prim = load<SimdType>(prim_arrays, base);
+                IndexType const base = common_mapping(nx_begin + (bi * width), j, k);
+                EulerPrim const prim = load<SimdType>(prim_ptrs, base);
                 SimdType const cs = eos.speed_of_sound(prim.d, prim.p);
                 SimdType const cx0 = cs + Kokkos::abs(prim.ux0);
                 SimdType const cx1 = cs + Kokkos::abs(prim.ux1);
@@ -143,13 +146,10 @@ T time_step_vec(
 
     T dt = time_step_kernel<simd_t>(exec_space, prim_arrays, eos, mesh, IndexType(0), vec_end);
 
-    static constexpr bool needs_scalar_tail = (simd_t::size() > 1);
-    if constexpr (needs_scalar_tail) {
-        if (vec_end < nx) {
-            T const dt_tail = time_step_kernel<
-                    simd_scalar_t>(exec_space, prim_arrays, eos, mesh, vec_end, nx);
-            dt = Kokkos::max(dt, dt_tail);
-        }
+    if (vec_end < nx) {
+        T const dt_tail
+                = time_step_kernel<simd_scalar_t>(exec_space, prim_arrays, eos, mesh, vec_end, nx);
+        dt = Kokkos::max(dt, dt_tail);
     }
     return 1 / dt;
 }
