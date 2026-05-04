@@ -3,6 +3,7 @@
 #include <cstddef>
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_SIMD.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 #include <uniform_mesh.hpp>
@@ -42,6 +43,7 @@ T time_step(
     return 1 / dt;
 }
 
+namespace detail {
 template <class SimdType>
 struct SimdMaxReducer
 {
@@ -81,6 +83,8 @@ public:
         return false;
     }
 };
+
+} // namespace detail
 
 template <class SimdType, class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 T time_step_kernel(
@@ -122,7 +126,7 @@ T time_step_kernel(
                 SimdType const invdt = (cx0 * invdx0) + (cx1 * invdx1) + (cx2 * invdx2);
                 dt_loc = Kokkos::max(dt_loc, invdt);
             },
-            SimdMaxReducer<SimdType>(dt_simd));
+            detail::SimdMaxReducer<SimdType>(dt_simd));
 
     return Kokkos::Experimental::reduce_max(dt_simd);
 }
