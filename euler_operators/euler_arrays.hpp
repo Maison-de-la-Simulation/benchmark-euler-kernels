@@ -179,6 +179,21 @@ KOKKOS_FUNCTION EulerPrim<std::remove_const_t<T>> load(
             .ux2 = prim_ptrs.ux2[i]};
 }
 
+template <class SimdType, class T, class IndexType>
+KOKKOS_FORCEINLINE_FUNCTION EulerPrim<SimdType> load(
+        EulerPrimArrays<T*> const& prim_ptrs,
+        IndexType const base) noexcept
+{
+    namespace KE = Kokkos::Experimental;
+    return {
+            .d = SimdType(prim_ptrs.d + base, KE::simd_flag_default),
+            .p = SimdType(prim_ptrs.p + base, KE::simd_flag_default),
+            .ux0 = SimdType(prim_ptrs.ux0 + base, KE::simd_flag_default),
+            .ux1 = SimdType(prim_ptrs.ux1 + base, KE::simd_flag_default),
+            .ux2 = SimdType(prim_ptrs.ux2 + base, KE::simd_flag_default),
+    };
+}
+
 template <
         class SimdType,
         class ElementType,
@@ -393,6 +408,21 @@ KOKKOS_FORCEINLINE_FUNCTION EulerCons<SimdType> load(
             .mx0 = SimdType(cons_arrays.mx0.data_handle() + base, KE::simd_flag_default),
             .mx1 = SimdType(cons_arrays.mx1.data_handle() + base, KE::simd_flag_default),
             .mx2 = SimdType(cons_arrays.mx2.data_handle() + base, KE::simd_flag_default),
+    };
+}
+
+template <class SimdType, class T, class IndexType>
+KOKKOS_FORCEINLINE_FUNCTION EulerCons<SimdType> load(
+        EulerConsArrays<T*> const& cons_ptrs,
+        IndexType const base) noexcept
+{
+    namespace KE = Kokkos::Experimental;
+    return {
+            .d = SimdType(cons_ptrs.d + base, KE::simd_flag_default),
+            .e = SimdType(cons_ptrs.e + base, KE::simd_flag_default),
+            .mx0 = SimdType(cons_ptrs.mx0 + base, KE::simd_flag_default),
+            .mx1 = SimdType(cons_ptrs.mx1 + base, KE::simd_flag_default),
+            .mx2 = SimdType(cons_ptrs.mx2 + base, KE::simd_flag_default),
     };
 }
 
