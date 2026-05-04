@@ -1,7 +1,9 @@
 #pragma once
-#include <Kokkos_Core.hpp>
 
-#include "euler_arrays.hpp"
+#include <cstddef>
+
+#include <Kokkos_Core.hpp>
+#include <euler_arrays.hpp>
 
 template <
         class ElementType,
@@ -28,8 +30,6 @@ void init_from_value(
                 array(i, j, k) = value;
             });
 }
-
-
 
 template <
         class ElementType,

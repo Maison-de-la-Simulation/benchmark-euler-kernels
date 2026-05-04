@@ -1,3 +1,5 @@
+#include <cstddef>
+
 #include <benchmark/benchmark.h>
 
 #include <Kokkos_Core.hpp>
@@ -11,7 +13,6 @@
 #include <prim_to_cons.hpp>
 #include <time_step.hpp>
 #include <uniform_mesh.hpp>
-#include "utils.hpp"
 
 #include "benchmark_utils.hpp"
 #include "index_type.hpp"
@@ -21,9 +22,12 @@ namespace {
 
 void EulerSimulation(benchmark::State& state)
 {
-    auto const nx = int_cast<index_t>(state.range());
     real_t const cfl_factor = 0.49;
     real_t const gamma = 1.4;
+
+    auto const nx = int_cast<index_t>(state.range());
+    std::size_t const nxg_z = nx + 2;
+    index_t const nxg = nx + 2;
 
     real_t const dx = 1. / static_cast<real_t>(nx);
     PerfectGas<real_t> const eos(gamma);
@@ -31,17 +35,17 @@ void EulerSimulation(benchmark::State& state)
     hllc const riemann_solver;
     Kokkos::DefaultExecutionSpace const exec_space;
     EulerPrimArrays const prims_alloc
-            = create_prim_arrays_1d<real_t>(exec_space, (nx + 2) * (nx + 2) * (nx + 2));
+            = create_prim_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
     EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
-            Kokkos::layout_left>>(prims_alloc, nx + 2, nx + 2, nx + 2);
+            Kokkos::layout_left>>(prims_alloc, nxg, nxg, nxg);
     EulerConsArrays const cons_alloc
-            = create_cons_arrays_1d<real_t>(exec_space, (nx + 2) * (nx + 2) * (nx + 2));
+            = create_cons_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
     EulerConsArrays const cons_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
-            Kokkos::layout_left>>(cons_alloc, nx + 2, nx + 2, nx + 2);
+            Kokkos::layout_left>>(cons_alloc, nxg, nxg, nxg);
 
     init_implode(exec_space, prim_arrays, mesh);
     prim_to_cons(exec_space, as_const(prim_arrays), cons_arrays, eos);
@@ -68,4 +72,4 @@ void EulerSimulation(benchmark::State& state)
 
 } // namespace
 
-BENCHMARK(EulerSimulation)->DenseRange(16, 320, 32);
+BENCHMARK(EulerSimulation)->UseRealTime()->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);

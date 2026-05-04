@@ -14,7 +14,7 @@ module load \
   cmake/3.31.9/gcc-15.1.0
 
 set -x
-cd ${SLURM_SUBMIT_DIR}
+cd "${SLURM_SUBMIT_DIR}" || exit
 
 mkdir -p slurm_out results/ruche/skx
 

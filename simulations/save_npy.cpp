@@ -3,9 +3,13 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <functional>
+#include <ios> // IWYU pragma: keep (std::streamsize)
+#include <limits>
 #include <numeric>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "save_npy.hpp"
@@ -35,7 +39,7 @@ void save_npy(std::ostream& os, NpyArrayView const& view)
 {
     // Build shape string: (d0, d1, ..., dN,)
     std::string shape_str = "(";
-    for (std::size_t ext : view.shape) {
+    for (std::size_t const ext : view.shape) {
         shape_str += std::to_string(ext);
         shape_str += ", ";
     }
@@ -58,26 +62,31 @@ void save_npy(std::ostream& os, NpyArrayView const& view)
     auto const hlen = static_cast<std::uint16_t>(header_dict.size());
 
     // Magic + version
-    os.write("\x93NUMPY", 6);
+    std::string_view constexpr magic("\x93NUMPY");
+    os.write(magic.data(), magic.size());
     std::uint8_t const major = 1;
     std::uint8_t const minor = 0;
+    // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast)
     os.write(reinterpret_cast<char const*>(&major), 1);
     os.write(reinterpret_cast<char const*>(&minor), 1);
 
     // Header length + content
     os.write(reinterpret_cast<char const*>(&hlen), sizeof(hlen));
-    os.write(header_dict.data(), header_dict.size());
+    os.write(header_dict.data(), static_cast<std::streamsize>(header_dict.size()));
 
     // Raw data
     std::size_t const n_elems
             = std::accumulate(view.shape.begin(), view.shape.end(), 1ULL, std::multiplies<> {});
-    os.write(reinterpret_cast<char const*>(view.data), n_elems * view.dtype.itemsize);
+    os
+            .write(reinterpret_cast<char const*>(view.data),
+                   static_cast<std::streamsize>(n_elems * view.dtype.itemsize));
+    // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
 }
 
 void save_npy(std::filesystem::path const& filename, NpyArrayView const& view)
 {
-    std::ofstream file(filename, std::ios::binary);
-    file.exceptions(std::ios::failbit | std::ios::badbit);
+    std::ofstream file(filename, std::ofstream::binary);
+    file.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
     save_npy(file, view);
 }

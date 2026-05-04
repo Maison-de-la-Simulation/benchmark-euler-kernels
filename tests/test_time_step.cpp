@@ -1,11 +1,12 @@
+#include <cstddef>
+
 #include <gtest/gtest.h>
 
 #include <Kokkos_Core.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 #include <time_step.hpp>
-
-#include "utils.hpp"
+#include <utils.hpp>
 
 TEST(TimeStepRemainderWorstRem, ScalarVsVectorized)
 {
@@ -13,11 +14,14 @@ TEST(TimeStepRemainderWorstRem, ScalarVsVectorized)
     using index_t = int;
 
     int const n = 23; // non-multiple of SIMD width to exercise remainder path
-    Kokkos::DefaultExecutionSpace exec_space;
+
+    auto nn = static_cast<std::size_t>(n);
+    std::size_t const n3 = nn * nn * nn;
+    Kokkos::DefaultExecutionSpace const exec_space;
     PerfectGas<real_t> const eos(1.4);
     UniformMesh3d<real_t> const mesh(1., 1., 1.);
 
-    auto prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n * n * n);
+    auto prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n3);
     auto prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
@@ -42,11 +46,13 @@ TEST(TimeStep, ScalarVsVectorized)
     using index_t = int;
 
     int const n = 32;
-    Kokkos::DefaultExecutionSpace exec_space;
+    auto nn = static_cast<std::size_t>(n);
+    std::size_t const n3 = nn * nn * nn;
+    Kokkos::DefaultExecutionSpace const exec_space;
     PerfectGas<real_t> const eos(1.4);
     UniformMesh3d<real_t> const mesh(1., 1., 1.);
 
-    auto prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n * n * n);
+    auto prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n3);
     auto prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,

@@ -1,28 +1,32 @@
+#include <cstddef>
+
 #include <benchmark/benchmark.h>
 
 #include <Kokkos_Core.hpp>
 #include <cons_to_prim.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
+#include <utils.hpp>
 
 #include "benchmark_utils.hpp"
 #include "index_type.hpp"
 #include "real_type.hpp"
-#include "utils.hpp"
 
 namespace {
 
 void ConsToPrim(benchmark::State& state)
 {
     auto const n = int_cast<index_t>(state.range());
+    std::size_t const n_z = n;
+
     PerfectGas<real_t> const eos(1.4);
     Kokkos::DefaultExecutionSpace const exec_space;
-    EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n * n * n);
+    EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n_z * n_z * n_z);
     EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
             Kokkos::layout_left>>(prims_alloc, n, n, n);
-    EulerConsArrays const cons_alloc = create_cons_arrays_1d<real_t>(exec_space, n * n * n);
+    EulerConsArrays const cons_alloc = create_cons_arrays_1d<real_t>(exec_space, n_z * n_z * n_z);
     EulerConsArrays const cons_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
@@ -40,17 +44,21 @@ void ConsToPrim(benchmark::State& state)
     set_constant_cells_processed(state, size(prim_arrays));
     set_constant_bytes_processed(state, size_bytes(prim_arrays) + size_bytes(cons_arrays));
 }
+
 void ConsToPrimVectorized(benchmark::State& state)
 {
     auto const n = int_cast<index_t>(state.range());
     PerfectGas<real_t> const eos(1.4);
     Kokkos::DefaultExecutionSpace const exec_space;
-    EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n * n * n);
+    auto nn = static_cast<std::size_t>(n);
+    std::size_t const n3 = nn * nn * nn;
+
+    EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n3);
     EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
             Kokkos::layout_left>>(prims_alloc, n, n, n);
-    EulerConsArrays const cons_alloc = create_cons_arrays_1d<real_t>(exec_space, n * n * n);
+    EulerConsArrays const cons_alloc = create_cons_arrays_1d<real_t>(exec_space, n3);
     EulerConsArrays const cons_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
@@ -74,12 +82,15 @@ void ConsToPrimWorstRem(benchmark::State& state)
     auto const n = int_cast<index_t>(state.range());
     PerfectGas<real_t> const eos(1.4);
     Kokkos::DefaultExecutionSpace const exec_space;
-    EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n * n * n);
+    auto nn = static_cast<std::size_t>(n);
+    std::size_t const n3 = nn * nn * nn;
+
+    EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n3);
     EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
             Kokkos::layout_left>>(prims_alloc, n, n, n);
-    EulerConsArrays const cons_alloc = create_cons_arrays_1d<real_t>(exec_space, n * n * n);
+    EulerConsArrays const cons_alloc = create_cons_arrays_1d<real_t>(exec_space, n3);
     EulerConsArrays const cons_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
@@ -97,17 +108,21 @@ void ConsToPrimWorstRem(benchmark::State& state)
     set_constant_cells_processed(state, size(prim_arrays));
     set_constant_bytes_processed(state, size_bytes(prim_arrays) + size_bytes(cons_arrays));
 }
+
 void ConsToPrimWorstRemVectorized(benchmark::State& state)
 {
     auto const n = int_cast<index_t>(state.range());
     PerfectGas<real_t> const eos(1.4);
     Kokkos::DefaultExecutionSpace const exec_space;
-    EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n * n * n);
+    auto nn = static_cast<std::size_t>(n);
+    std::size_t const n3 = nn * nn * nn;
+
+    EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n3);
     EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
             Kokkos::layout_left>>(prims_alloc, n, n, n);
-    EulerConsArrays const cons_alloc = create_cons_arrays_1d<real_t>(exec_space, n * n * n);
+    EulerConsArrays const cons_alloc = create_cons_arrays_1d<real_t>(exec_space, n3);
     EulerConsArrays const cons_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
@@ -125,9 +140,13 @@ void ConsToPrimWorstRemVectorized(benchmark::State& state)
     set_constant_cells_processed(state, size(prim_arrays));
     set_constant_bytes_processed(state, size_bytes(prim_arrays) + size_bytes(cons_arrays));
 }
+
 } // namespace
 
-BENCHMARK(ConsToPrim)->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);
-BENCHMARK(ConsToPrimVectorized)->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);
-BENCHMARK(ConsToPrimWorstRem)->DenseRange(7, 128, 8)->DenseRange(127, 320, 32);
-BENCHMARK(ConsToPrimWorstRemVectorized)->DenseRange(7, 128, 8)->DenseRange(127, 320, 32);
+BENCHMARK(ConsToPrim)->UseRealTime()->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);
+BENCHMARK(ConsToPrimVectorized)->UseRealTime()->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);
+BENCHMARK(ConsToPrimWorstRem)->UseRealTime()->DenseRange(7, 128, 8)->DenseRange(127, 320, 32);
+BENCHMARK(ConsToPrimWorstRemVectorized)
+        ->UseRealTime()
+        ->DenseRange(7, 128, 8)
+        ->DenseRange(127, 320, 32);

@@ -1,7 +1,8 @@
 #pragma once
 
+#include <cstddef>
+
 #include <Kokkos_Core.hpp>
-#include <Kokkos_NumericTraits.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 #include <uniform_mesh.hpp>
@@ -58,20 +59,23 @@ public:
     {
         dst = Kokkos::max(dst, src);
     }
+
     KOKKOS_INLINE_FUNCTION void init(value_type& val) const
     {
-        using scalar_t = typename SimdType::value_type;
+        using scalar_t = SimdType::value_type;
         val = value_type(Kokkos::reduction_identity<scalar_t>::max());
-        // val = SimdType(std::numeric_limits<scalar_t>::lowest());
     }
+
     KOKKOS_INLINE_FUNCTION value_type& reference() const
     {
         return *m_value.data();
     }
+
     KOKKOS_INLINE_FUNCTION result_view_type view() const
     {
         return m_value;
     }
+
     KOKKOS_INLINE_FUNCTION bool references_scalar() const
     {
         return false;
@@ -99,14 +103,14 @@ T time_step_kernel(
     T const invdx1 = 1 / mesh.dx1();
     T const invdx2 = 1 / mesh.dx2();
 
-    SimdType dt_simd;
+    SimdType dt_simd {};
     Kokkos::parallel_reduce(
             "time_step_vec",
             Kokkos::MDRangePolicy<
                     Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
                     Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {nx_blocks, ny, nz}),
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k, SimdType & dt_loc) {
-                IndexType const base = prim_arrays.d.mapping()(nx_begin + bi * width, j, k);
+                IndexType const base = prim_arrays.d.mapping()(nx_begin + (bi * width), j, k);
                 EulerPrim<SimdType> const prim = load<SimdType>(prim_arrays, base);
                 SimdType const cs = eos.speed_of_sound(prim.d, prim.p);
                 SimdType const cx0 = cs + Kokkos::abs(prim.ux0);

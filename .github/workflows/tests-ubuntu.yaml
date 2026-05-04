@@ -1,0 +1,90 @@
+---
+name: Tests on Ubuntu
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/tests-ubuntu.yaml'
+      - '.clang-tidy'
+      - '**.cpp'
+      - '**.hpp'
+      - '**.hpp.in'
+      - 'CMakeLists.txt'
+      - '**/CMakeLists.txt'
+      - '**.cmake'
+      - '**.cmake.in'
+
+concurrency:
+  group: ${{github.workflow}}-${{github.ref == github.ref_protected && github.run_id || github.event.pull_request.number || github.ref}}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: jidicula/clang-format-action@654a770daa28443dd111d133e4083e21c1075674  # v4.18.0
+        with:
+          clang-format-version: '22'
+      - name: Prefer 'if defined'/'if !defined' over 'ifdef'/'ifndef'
+        run: if grep -E "(ifdef|ifndef)" $(git ls-files '*.[ch]pp'); then exit 1; fi
+      - name: Do not include <iostream> in the headers of the library
+        run: if grep "#include <iostream>" $(git ls-files '*.hpp'); then exit 1; fi
+      - name: Find modifications of Kokkos reserved macros
+        run: if grep -E "(define|undef) KOKKOS_" $(git ls-files '*.[ch]pp'); then exit 1; fi
+
+  clang-tidy:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/maison-de-la-simulation/benchmark-euler-kernels:main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - run: |
+          cmake \
+            -D BUILD_TESTING=ON \
+            -D CMAKE_CXX_COMPILER=clang++-22 \
+            -D CMAKE_CXX_CLANG_TIDY="clang-tidy-22;-warnings-as-errors=*" \
+            -B build
+      - run: |
+          cmake --build build --parallel 4
+
+  include-what-you-use:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/maison-de-la-simulation/benchmark-euler-kernels:main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - run: |
+          git clone https://gist.github.com/c033bea32c51395c85fb5a4d74d8183b.git iwyu
+          mv iwyu/iwyu-kokkos.json .
+          rm -rf iwyu
+      - run: |
+          cmake \
+            -D BUILD_TESTING=ON \
+            -D CMAKE_CXX_COMPILER=clang++-22 \
+            -D CMAKE_CXX_INCLUDE_WHAT_YOU_USE="include-what-you-use;-Xiwyu;--no_fwd_decls;-Xiwyu;--verbose=3;-Xiwyu;--mapping=$PWD/iwyu-kokkos.json;" \
+            -D CMAKE_VERIFY_INTERFACE_HEADER_SETS=ON \
+            -B build
+      - run: |
+          cmake --build build --target all all_verify_interface_header_sets --parallel 4
+
+  tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/maison-de-la-simulation/benchmark-euler-kernels:main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - run: |
+          cmake \
+            -D BUILD_TESTING=ON \
+            -B build
+      - run: |
+          cmake --build build --parallel 4
+      - run: |
+          ./build/tests/euler_tests
+      - run: |
+          ./build/benchmarks/euler_benchmarks --benchmark_dry_run --benchmark_filter='.*/[0-9]/.*'

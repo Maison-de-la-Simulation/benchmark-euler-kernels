@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --time=00:04:00
 #SBATCH --partition=gpua100
-#SBATCH--gres=gpu:1
+#SBATCH --gres=gpu:1
 
 module purge
 module load \
@@ -14,7 +14,7 @@ module load \
   cuda/12.8.1/none-none
 
 set -x
-cd ${SLURM_SUBMIT_DIR}
+cd "${SLURM_SUBMIT_DIR}" || exit
 
 mkdir -p slurm_out results/ruche/a100
 
@@ -25,7 +25,6 @@ BENCHMARK_FILTER=${1:-""}
 
 # include SLURM_JOB_ID in the JSON output filename
 ./build-a100/benchmarks/euler_benchmarks \
-  \
   --benchmark_out_format=json \
   --benchmark_out=./results/ruche/a100/"[${SLURM_JOB_ID}]_a100-${BENCHMARK_FILTER}.json" # --benchmark_filter="${BENCHMARK_FILTER}" \
 

@@ -1,8 +1,11 @@
 #include <chrono>
+#include <cstddef>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
-#include <ostream>
+#include <ostream> // IWYU pragma: keep (std::flush)
 #include <sstream>
+#include <string>
 
 #include <Kokkos_Core.hpp>
 #include <cons_to_prim.hpp>
@@ -29,6 +32,9 @@ int main(int argc, char** argv)
     real_t const cfl_factor = 0.49;
     real_t const gamma = 1.4;
 
+    std::size_t const nxg_z = nx + 2;
+    index_t const nxg = nx + 2;
+
     real_t const dx = 1. / nx;
     Kokkos::ScopeGuard const scope(argc, argv);
     PerfectGas<real_t> const eos(gamma);
@@ -36,17 +42,17 @@ int main(int argc, char** argv)
     hllc const riemann_solver;
     Kokkos::DefaultExecutionSpace const exec_space;
     EulerPrimArrays const prims_alloc
-            = create_prim_arrays_1d<real_t>(exec_space, (nx + 2) * (nx + 2) * (nx + 2));
+            = create_prim_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
     EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
-            Kokkos::layout_left>>(prims_alloc, nx + 2, nx + 2, nx + 2);
+            Kokkos::layout_left>>(prims_alloc, nxg, nxg, nxg);
     EulerConsArrays const cons_alloc
-            = create_cons_arrays_1d<real_t>(exec_space, (nx + 2) * (nx + 2) * (nx + 2));
+            = create_cons_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
     EulerConsArrays const cons_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
-            Kokkos::layout_left>>(cons_alloc, nx + 2, nx + 2, nx + 2);
+            Kokkos::layout_left>>(cons_alloc, nxg, nxg, nxg);
 
     init_implode(exec_space, prim_arrays, mesh);
     prim_to_cons(exec_space, as_const(prim_arrays), cons_arrays, eos);
