@@ -7,5 +7,8 @@ gtest_discover_tests(cosine_advection_test DISCOVERY_MODE PRE_TEST)
 
 add_executable(euler_tests)
 target_link_libraries(euler_tests PRIVATE euler_operators euler_utils GTest::gtest Kokkos::kokkos)
-target_sources(euler_tests PRIVATE main.cpp test_prim_to_cons.cpp test_cons_to_prim.cpp test_time_step.cpp)
+target_sources(
+    euler_tests
+    PRIVATE main.cpp test_prim_to_cons.cpp test_cons_to_prim.cpp test_time_step.cpp
+)
 gtest_discover_tests(euler_tests DISCOVERY_MODE PRE_TEST)
