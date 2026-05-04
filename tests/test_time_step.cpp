@@ -1,9 +1,13 @@
+#include <cstddef>
+#include <string>
+
 #include <gtest/gtest.h>
 
 #include <Kokkos_Core.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 #include <time_step.hpp>
+#include <uniform_mesh.hpp>
 #include <utils.hpp>
 
 TEST(TimeStepRemainderWorstRem, ScalarVsVectorized)
