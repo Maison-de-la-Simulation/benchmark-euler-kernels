@@ -5,9 +5,8 @@
 
 #include <Kokkos_Macros.hpp>
 #include <Kokkos_MinMax.hpp>
-
-#include "euler_arrays.hpp"
-#include "perfect_gas.hpp"
+#include <euler_arrays.hpp>
+#include <perfect_gas.hpp>
 
 template <std::size_t Dir, class T>
 KOKKOS_FUNCTION T get(std::integral_constant<std::size_t, Dir> /*unused*/, EulerPrim<T> const& prim)

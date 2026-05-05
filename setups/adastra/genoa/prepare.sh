@@ -11,16 +11,16 @@ export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
 export gtest_ROOT=$install_dir/gtest
 
-# git clone --branch v1.9.4 --depth 1 https://github.com/google/benchmark.git
-# cmake \
-#   -D BENCHMARK_ENABLE_TESTING=OFF \
-#   -D CMAKE_BUILD_TYPE=Release \
-#   -D CMAKE_CXX_STANDARD=20 \
-#   -B build-benchmark \
-#   -S benchmark
-# cmake --build build-benchmark --parallel 8
-# cmake --install build-benchmark --prefix "$benchmark_ROOT"
-# rm -rf build-benchmark benchmark
+git clone --branch v1.9.4 --depth 1 https://github.com/google/benchmark.git
+cmake \
+  -D BENCHMARK_ENABLE_TESTING=OFF \
+  -D CMAKE_BUILD_TYPE=Release \
+  -D CMAKE_CXX_STANDARD=20 \
+  -B build-benchmark \
+  -S benchmark
+cmake --build build-benchmark --parallel 8
+cmake --install build-benchmark --prefix "$benchmark_ROOT"
+rm -rf build-benchmark benchmark
 
 git clone https://github.com/kokkos/kokkos.git
 cd kokkos || exit
@@ -39,15 +39,15 @@ cmake --build build-kokkos --parallel
 cmake --install build-kokkos --prefix "$Kokkos_ROOT"
 rm -rf build-kokkos kokkos
 
-# git clone --branch v1.17.0 --depth 1 https://github.com/google/googletest.git
-# cmake \
-#   -D CMAKE_BUILD_TYPE=Release \
-#   -D CMAKE_CXX_STANDARD=20 \
-#   -B build-gtest \
-#   -S googletest
-# cmake --build build-gtest
-# cmake --install build-gtest --prefix "$gtest_ROOT"
-# rm -rf build-gtest googletest
+git clone --branch v1.17.0 --depth 1 https://github.com/google/googletest.git
+cmake \
+  -D CMAKE_BUILD_TYPE=Release \
+  -D CMAKE_CXX_STANDARD=20 \
+  -B build-gtest \
+  -S googletest
+cmake --build build-gtest
+cmake --install build-gtest --prefix "$gtest_ROOT"
+rm -rf build-gtest googletest
 
 cmake -DGTest_ROOT="$gtest_ROOT" -D CMAKE_BUILD_TYPE=Release -B build-genoa
 cmake --build build-genoa --parallel 8

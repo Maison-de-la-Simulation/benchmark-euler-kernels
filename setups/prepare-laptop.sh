@@ -19,7 +19,10 @@ cmake --build build-benchmark --parallel 4
 cmake --install build-benchmark --prefix "$benchmark_ROOT"
 rm -rf build-benchmark benchmark
 
-git clone --branch 5.0.0 --depth 1 https://github.com/kokkos/kokkos.git
+git clone https://github.com/kokkos/kokkos.git
+cd kokkos || exit
+git checkout 7f8988b4d
+cd .. || exit
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_STANDARD=20 \
