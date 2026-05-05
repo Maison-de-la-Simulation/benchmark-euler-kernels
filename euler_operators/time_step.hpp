@@ -3,6 +3,7 @@
 #include <cstddef>
 
 #include <Kokkos_Core.hpp>
+// IWYU pragma: no_include <Kokkos_MemoryTraits.hpp>
 #include <Kokkos_ReductionIdentity.hpp>
 #include <Kokkos_SIMD.hpp>
 #include <Kokkos_SIMD_Common.hpp>
