@@ -55,13 +55,9 @@ void prim_to_cons_kernel(
     IndexType const ny = prim_arrays.d.extent(1);
     IndexType const nz = prim_arrays.d.extent(2);
 
-    T* cd = cons_arrays.d.data_handle();
-    T* ce = cons_arrays.e.data_handle();
-    T* cm0 = cons_arrays.mx0.data_handle();
-    T* cm1 = cons_arrays.mx1.data_handle();
-    T* cm2 = cons_arrays.mx2.data_handle();
-
-    auto const cons_ptrs = EulerConsArrays<T*> {cd, ce, cm0, cm1, cm2};
+    Kokkos::layout_left::mapping const common_mapping = prim_arrays.d.mapping();
+    EulerPrimArrays const prim_ptrs = data_handle(prim_arrays);
+    EulerConsArrays const cons_ptrs = data_handle(cons_arrays);
 
     Kokkos::parallel_for(
             "prim_to_cons_kernel",
@@ -69,8 +65,8 @@ void prim_to_cons_kernel(
                     Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
                     Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {nx_blocks, ny, nz}),
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k) {
-                IndexType const base = prim_arrays.d.mapping()(nx_begin + (bi * width), j, k);
-                EulerPrim const prim = load<SimdType>(prim_arrays, base);
+                IndexType const base = common_mapping(nx_begin + (bi * width), j, k);
+                EulerPrim const prim = load<SimdType>(prim_ptrs, base);
                 EulerCons const cons = to_cons(prim, eos.internal_energy(prim.d, prim.p));
                 store<SimdType>(cons, cons_ptrs, base);
             });

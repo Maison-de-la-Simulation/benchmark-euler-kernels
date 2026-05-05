@@ -55,16 +55,15 @@ int main(int argc, char** argv)
             Kokkos::layout_left>>(cons_alloc, nxg, nxg, nxg);
 
     init_implode(exec_space, prim_arrays, mesh);
-    prim_to_cons_vec(exec_space, as_const(prim_arrays), cons_arrays, eos);
+    prim_to_cons(exec_space, as_const(prim_arrays), cons_arrays, eos);
 
     exec_space.fence();
     auto const start = std::chrono::steady_clock::now();
     int it = 0;
     while (it < nt) {
-        real_t const dt = time_step_vec(exec_space, as_const(prim_arrays), eos, mesh);
+        real_t const dt = time_step(exec_space, as_const(prim_arrays), eos, mesh);
 
-        godunov_vec(
-                exec_space,
+        godunov(exec_space,
                 as_const(prim_arrays),
                 cons_arrays,
                 eos,
@@ -74,7 +73,7 @@ int main(int argc, char** argv)
 
         boundary_conditions_periodic(exec_space, cons_arrays, 1);
 
-        cons_to_prim_vec(exec_space, as_const(cons_arrays), prim_arrays, eos);
+        cons_to_prim(exec_space, as_const(cons_arrays), prim_arrays, eos);
 
         ++it;
 

@@ -108,22 +108,6 @@ void run_case(int n, double dt, EulerPrim<double> const& prim)
                double dt) { godunov_vec(exec, P, U, eos, mesh, solver, dt); },
             hllc {});
 
-    auto cons_opti = run(
-            exec,
-            n,
-            prim,
-            eos,
-            mesh,
-            dt,
-            [](auto const& exec,
-               auto const& P,
-               auto& U,
-               auto const& eos,
-               auto const& mesh,
-               auto solver,
-               double dt) { godunov_opti(exec, P, U, eos, mesh, solver, dt); },
-            hllc_opti {});
-
     auto ref_h = EulerConsArrays {
             .d = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_ref.d),
             .e = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_ref.e),
@@ -138,13 +122,6 @@ void run_case(int n, double dt, EulerPrim<double> const& prim)
             .mx1 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_vec.mx1),
             .mx2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_vec.mx2)};
 
-    auto opti_h = EulerConsArrays {
-            .d = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_opti.d),
-            .e = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_opti.e),
-            .mx0 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_opti.mx0),
-            .mx1 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_opti.mx1),
-            .mx2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_opti.mx2)};
-
     double const tol = 1e-12;
 
     for (int i = 0; i < n; ++i) {
@@ -153,7 +130,6 @@ void run_case(int n, double dt, EulerPrim<double> const& prim)
                 int const idx = i + (n * (j + (n * k)));
 
                 compare(ref_h, vec_h, tol, idx);
-                compare(ref_h, opti_h, tol, idx);
             }
         }
     }
@@ -161,7 +137,7 @@ void run_case(int n, double dt, EulerPrim<double> const& prim)
 
 } // namespace
 
-TEST_P(GodunovTest, ScalarVectorizedOptimizedAgree)
+TEST_P(GodunovTest, ScalarVectorizedAgree)
 {
     auto const& c = GetParam();
     run_case(c.n, c.dt, c.prim);

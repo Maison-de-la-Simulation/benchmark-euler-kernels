@@ -16,8 +16,6 @@ Checks: >
   -misc-include-cleaner,
   modernize-*,
   -modernize-use-trailing-return-type,
-  -modernize-use-nodiscard,
-  -modernize-return-braced-init-list,
   mpi-*,
   openmp-*,
   performance-*,

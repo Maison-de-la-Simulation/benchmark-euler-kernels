@@ -1,9 +1,13 @@
+#include <cstddef>
+#include <string>
+
 #include <gtest/gtest.h>
 
 #include <Kokkos_Core.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 #include <time_step.hpp>
+#include <uniform_mesh.hpp>
 #include <utils.hpp>
 
 TEST(TimeStepRemainderWorstRem, ScalarVsVectorized)
@@ -12,9 +16,9 @@ TEST(TimeStepRemainderWorstRem, ScalarVsVectorized)
     using index_t = int;
 
     int const n = 23; // non-multiple of SIMD width to exercise remainder path
-    auto const nn = static_cast<std::size_t>(n);
-    std::size_t const n3 = nn * nn * nn;
 
+    auto nn = static_cast<std::size_t>(n);
+    std::size_t const n3 = nn * nn * nn;
     Kokkos::DefaultExecutionSpace const exec_space;
     PerfectGas<real_t> const eos(1.4);
     UniformMesh3d<real_t> const mesh(1., 1., 1.);
@@ -42,9 +46,8 @@ TEST(TimeStep, ScalarVsVectorized)
     using index_t = int;
 
     int const n = 32;
-    auto const nn = static_cast<std::size_t>(n);
+    auto nn = static_cast<std::size_t>(n);
     std::size_t const n3 = nn * nn * nn;
-
     Kokkos::DefaultExecutionSpace const exec_space;
     PerfectGas<real_t> const eos(1.4);
     UniformMesh3d<real_t> const mesh(1., 1., 1.);
