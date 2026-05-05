@@ -125,13 +125,9 @@ void godunov_kernel(
     Kokkos::Array<T, 3> const ds = {mesh.ds0(), mesh.ds1(), mesh.ds2()};
     T const dtodv = dt / mesh.dv();
 
-    T* cd = cons_arrays.d.data_handle();
-    T* ce = cons_arrays.e.data_handle();
-    T* cm0 = cons_arrays.mx0.data_handle();
-    T* cm1 = cons_arrays.mx1.data_handle();
-    T* cm2 = cons_arrays.mx2.data_handle();
-
-    auto const cons_ptrs = EulerConsArrays<T*> {cd, ce, cm0, cm1, cm2};
+    Kokkos::layout_left::mapping const common_mapping = prim_arrays.d.mapping();
+    EulerPrimArrays const prim_ptrs = data_handle(prim_arrays);
+    EulerConsArrays const cons_ptrs = data_handle(cons_arrays);
 
     Kokkos::parallel_for(
             "godunov_kernel",
@@ -142,18 +138,15 @@ void godunov_kernel(
                     {0, 1, 1},
                     {nx_blocks, ny - 1, nz - 1}), // nx_begin already acouting for ghost cells
             KOKKOS_LAMBDA(IndexType const bi, IndexType const j, IndexType const k) {
-                IndexType const base = prim_arrays.d.mapping()(nx_begin + (bi * width), j, k);
-
+                IndexType const base = common_mapping(nx_begin + (bi * width), j, k);
                 EulerPrim<SimdType> const prim = load<SimdType>(prim_arrays, base);
                 EulerFlux<SimdType> flux {};
 
                 {
-                    EulerPrim<SimdType> const prim_L = load<SimdType>(prim_arrays, base - 1);
-                    EulerPrim<SimdType> const prim_R = load<SimdType>(prim_arrays, base + 1);
-                    EulerFlux<SimdType> const flux_L
-                            = riemann_solver(dir_t<0>(), eos, prim_L, prim);
-                    EulerFlux<SimdType> const flux_R
-                            = riemann_solver(dir_t<0>(), eos, prim, prim_R);
+                    EulerPrim const prim_L = load<SimdType>(prim_arrays, base - 1);
+                    EulerPrim const prim_R = load<SimdType>(prim_arrays, base + 1);
+                    EulerFlux const flux_L = riemann_solver(dir_t<0>(), eos, prim_L, prim);
+                    EulerFlux const flux_R = riemann_solver(dir_t<0>(), eos, prim, prim_R);
                     flux.d += ds[0] * (flux_R.d - flux_L.d);
                     flux.e += ds[0] * (flux_R.e - flux_L.e);
                     flux.mx0 += ds[0] * (flux_R.mx0 - flux_L.mx0);
@@ -161,12 +154,10 @@ void godunov_kernel(
                     flux.mx2 += ds[0] * (flux_R.mx2 - flux_L.mx2);
                 }
                 {
-                    EulerPrim<SimdType> const prim_L = load<SimdType>(prim_arrays, base - stride_y);
-                    EulerPrim<SimdType> const prim_R = load<SimdType>(prim_arrays, base + stride_y);
-                    EulerFlux<SimdType> const flux_L
-                            = riemann_solver(dir_t<1>(), eos, prim_L, prim);
-                    EulerFlux<SimdType> const flux_R
-                            = riemann_solver(dir_t<1>(), eos, prim, prim_R);
+                    EulerPrim const prim_L = load<SimdType>(prim_arrays, base - stride_y);
+                    EulerPrim const prim_R = load<SimdType>(prim_arrays, base + stride_y);
+                    EulerFlux const flux_L = riemann_solver(dir_t<1>(), eos, prim_L, prim);
+                    EulerFlux const flux_R = riemann_solver(dir_t<1>(), eos, prim, prim_R);
                     flux.d += ds[1] * (flux_R.d - flux_L.d);
                     flux.e += ds[1] * (flux_R.e - flux_L.e);
                     flux.mx0 += ds[1] * (flux_R.mx0 - flux_L.mx0);
@@ -174,12 +165,10 @@ void godunov_kernel(
                     flux.mx2 += ds[1] * (flux_R.mx2 - flux_L.mx2);
                 }
                 {
-                    EulerPrim<SimdType> const prim_L = load<SimdType>(prim_arrays, base - stride_z);
-                    EulerPrim<SimdType> const prim_R = load<SimdType>(prim_arrays, base + stride_z);
-                    EulerFlux<SimdType> const flux_L
-                            = riemann_solver(dir_t<2>(), eos, prim_L, prim);
-                    EulerFlux<SimdType> const flux_R
-                            = riemann_solver(dir_t<2>(), eos, prim, prim_R);
+                    EulerPrim const prim_L = load<SimdType>(prim_arrays, base - stride_z);
+                    EulerPrim const prim_R = load<SimdType>(prim_arrays, base + stride_z);
+                    EulerFlux const flux_L = riemann_solver(dir_t<2>(), eos, prim_L, prim);
+                    EulerFlux const flux_R = riemann_solver(dir_t<2>(), eos, prim, prim_R);
                     flux.d += ds[2] * (flux_R.d - flux_L.d);
                     flux.e += ds[2] * (flux_R.e - flux_L.e);
                     flux.mx0 += ds[2] * (flux_R.mx0 - flux_L.mx0);
@@ -187,7 +176,7 @@ void godunov_kernel(
                     flux.mx2 += ds[2] * (flux_R.mx2 - flux_L.mx2);
                 }
 
-                EulerCons<SimdType> cons = load<SimdType>(cons_ptrs, base);
+                EulerCons cons = load<SimdType>(cons_ptrs, base);
                 cons.d -= dtodv * flux.d;
                 cons.e -= dtodv * flux.e;
                 cons.mx0 -= dtodv * flux.mx0;
