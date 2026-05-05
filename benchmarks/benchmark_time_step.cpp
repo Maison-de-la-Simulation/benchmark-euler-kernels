@@ -42,6 +42,34 @@ void TimeStep(benchmark::State& state)
     set_constant_bytes_processed(state, size_bytes(prim_arrays));
 }
 
+void TimeStepVectorized(benchmark::State& state)
+{
+    auto const n = int_cast<index_t>(state.range());
+    std::size_t const n_z = n;
+
+    PerfectGas<real_t> const eos(1.4);
+    UniformMesh3d<real_t> const mesh(1., 1., 1.);
+    Kokkos::DefaultExecutionSpace const exec_space;
+    EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n_z * n_z * n_z);
+    EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
+            real_t,
+            Kokkos::dextents<index_t, 3>,
+            Kokkos::layout_left>>(prims_alloc, n, n, n);
+    EulerPrim<real_t> const prim {.d = 1, .p = 1, .ux0 = 0, .ux1 = 0, .ux2 = 0};
+    init_from_state(exec_space, prim_arrays, prim);
+    exec_space.fence();
+
+    for ([[maybe_unused]] auto _ : state) {
+        real_t dt = time_step_vec(exec_space, as_const(prim_arrays), eos, mesh);
+        exec_space.fence();
+        benchmark::DoNotOptimize(dt);
+    }
+
+    set_constant_cells_processed(state, size(prim_arrays));
+    set_constant_bytes_processed(state, size_bytes(prim_arrays));
+}
+
 } // namespace
 
 BENCHMARK(TimeStep)->UseRealTime()->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);
+BENCHMARK(TimeStepVectorized)->UseRealTime()->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);
