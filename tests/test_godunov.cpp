@@ -1,6 +1,11 @@
+#include <cstddef>
+#include <string>
+
 #include <gtest/gtest.h>
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_SIMD_Common.hpp>
+#include <Kokkos_SIMD_Scalar.hpp>
 #include <euler_arrays.hpp>
 #include <godunov.hpp>
 #include <hllc.hpp>
