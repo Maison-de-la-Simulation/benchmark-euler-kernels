@@ -3,7 +3,9 @@
 #include <cstddef>
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_ReductionIdentity.hpp>
 #include <Kokkos_SIMD.hpp>
+#include <Kokkos_SIMD_Common.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 #include <uniform_mesh.hpp>
