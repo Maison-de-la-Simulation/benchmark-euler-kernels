@@ -4,6 +4,7 @@
 #include <type_traits>
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_SIMD.hpp>
 #include <euler_arrays.hpp>
 #include <hllc.hpp>
 #include <perfect_gas.hpp>
