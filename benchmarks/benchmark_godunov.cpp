@@ -3,6 +3,7 @@
 #include <benchmark/benchmark.h>
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_SIMD.hpp>
 #include <euler_arrays.hpp>
 #include <godunov.hpp>
 #include <hllc.hpp>
