@@ -37,7 +37,7 @@ cmake \
   -D Kokkos_ENABLE_OPENMP=ON \
   -B build-kokkos \
   -S kokkos
-cmake --build build-kokkos --parallel
+cmake --build build-kokkos --parallel 8
 cmake --install build-kokkos --prefix "$Kokkos_ROOT"
 rm -rf build-kokkos kokkos
 
@@ -52,4 +52,4 @@ cmake --install build-gtest --prefix "$gtest_ROOT"
 rm -rf build-gtest googletest
 
 cmake -D CMAKE_BUILD_TYPE=Release -B build-skx
-cmake --build build-skx --parallel
+cmake --build build-skx --parallel 8

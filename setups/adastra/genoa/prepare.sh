@@ -35,7 +35,7 @@ cmake \
   -D Kokkos_ENABLE_OPENMP=ON \
   -B build-kokkos \
   -S kokkos
-cmake --build build-kokkos --parallel
+cmake --build build-kokkos --parallel 8
 cmake --install build-kokkos --prefix "$Kokkos_ROOT"
 rm -rf build-kokkos kokkos
 
