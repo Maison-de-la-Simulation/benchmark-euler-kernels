@@ -3,12 +3,13 @@
 module purge
 
 module load \
-    gcc-native/13.2 \
-    cmake/3.27.9
+  gcc-native/13.2 \
+  cmake/3.27.9
 
 export install_dir=$PWD/opt/genoa
 export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
+export gtest_ROOT=$install_dir/gtest
 
 git clone --branch v1.9.4 --depth 1 https://github.com/google/benchmark.git
 cmake \
@@ -21,7 +22,10 @@ cmake --build build-benchmark --parallel 8
 cmake --install build-benchmark --prefix "$benchmark_ROOT"
 rm -rf build-benchmark benchmark
 
-git clone --branch fix-simd-from-4.7.1 --depth 1 https://github.com/tpadioleau/kokkos.git
+git clone https://github.com/kokkos/kokkos.git
+cd kokkos || exit
+git checkout 7f8988b4d
+cd .. || exit
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_STANDARD=20 \
@@ -35,5 +39,15 @@ cmake --build build-kokkos --parallel 8
 cmake --install build-kokkos --prefix "$Kokkos_ROOT"
 rm -rf build-kokkos kokkos
 
-cmake -D CMAKE_BUILD_TYPE=Release -B build-genoa
+git clone --branch v1.17.0 --depth 1 https://github.com/google/googletest.git
+cmake \
+  -D CMAKE_BUILD_TYPE=Release \
+  -D CMAKE_CXX_STANDARD=20 \
+  -B build-gtest \
+  -S googletest
+cmake --build build-gtest
+cmake --install build-gtest --prefix "$gtest_ROOT"
+rm -rf build-gtest googletest
+
+cmake -DGTest_ROOT="$gtest_ROOT" -D CMAKE_BUILD_TYPE=Release -B build-genoa
 cmake --build build-genoa --parallel 8

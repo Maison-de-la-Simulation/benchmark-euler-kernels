@@ -5,6 +5,7 @@
 
 #include <Kokkos_Macros.hpp>
 #include <Kokkos_MinMax.hpp>
+#include <Kokkos_SIMD.hpp>
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 
@@ -47,6 +48,24 @@ KOKKOS_FUNCTION T get(std::integral_constant<std::size_t, Dir> /*unused*/, Euler
     }
 }
 
+namespace detail {
+
+// scalar
+template <class T>
+KOKKOS_FUNCTION T select(bool cond, T const& a, T const& b)
+{
+    return cond ? a : b;
+}
+
+// simd
+template <class Mask, class T>
+KOKKOS_FUNCTION T select(Mask const& mask, T const& a, T const& b)
+{
+    return Kokkos::Experimental::condition(mask, a, b);
+}
+
+} // namespace detail
+
 struct hllc
 {
     template <std::size_t Dir, class T, class U>
@@ -57,6 +76,8 @@ struct hllc
             EulerPrim<T> const& q_R) const noexcept
     {
         static_assert(Dir < 3);
+
+        using detail::select;
 
         T const un_L = get(dir, q_L);
         T const un_R = get(dir, q_R);
@@ -72,34 +93,51 @@ struct hllc
 
         // Compute acoustic star states
         T const ustar = (q_R.p - q_L.p + (rc_L * un_L) - (rc_R * un_R)) / (rc_L - rc_R);
-        T const pstar = static_cast<U>(0.5)
-                        * (q_L.p + q_R.p + (rc_L * (ustar - un_L)) + (rc_R * (ustar - un_R)));
+        T const pstar = 0.5 * (q_L.p + q_R.p + (rc_L * (ustar - un_L)) + (rc_R * (ustar - un_R)));
 
-        T const S = ustar > 0 ? S_L : S_R;
-        EulerPrim<T> const q = ustar > 0 ? q_L : q_R;
+        // Conditions (scalar -> bool, SIMD -> mask)
+        auto const cond_ustar = ustar > 0;
+        auto const cond_SR = S_L * S_R > 0;
+
+        // Select wave speed and state
+        T const S = select(cond_ustar, S_L, S_R);
+
+        EulerPrim<T> q {};
+        q.d = select(cond_ustar, q_L.d, q_R.d);
+        q.p = select(cond_ustar, q_L.p, q_R.p);
+        q.ux0 = select(cond_ustar, q_L.ux0, q_R.ux0);
+        q.ux1 = select(cond_ustar, q_L.ux1, q_R.ux1);
+        q.ux2 = select(cond_ustar, q_L.ux2, q_R.ux2);
 
         T const un = get(dir, q);
         T const etot = eos.internal_energy(q.d, q.p) + kinetic_energy(q);
 
-        T const un_o = S_L * S_R > 0 ? un : ustar;
-        T const ptot_o = S_L * S_R > 0 ? q.p : pstar;
+        // Output states
+        T const un_o = select(cond_SR, un, ustar);
+        T const ptot_o = select(cond_SR, q.p, pstar);
+
         T const d_o = (S - un) / (S - un_o) * q.d;
+
         T const etot_o
                 = ((S - un) / (S - un_o) * etot) + (((ptot_o * un_o) - (q.p * un)) / (S - ustar));
 
         EulerFlux<T> flux {};
+
         flux.d = d_o * un_o;
         flux.e = (etot_o + ptot_o) * un_o;
+
         flux.mx0 = d_o * un_o * q.ux0;
         flux.mx1 = d_o * un_o * q.ux1;
         flux.mx2 = d_o * un_o * q.ux2;
+
         if constexpr (Dir == 0) {
             flux.mx0 = (d_o * un_o * un_o) + ptot_o;
         } else if constexpr (Dir == 1) {
             flux.mx1 = (d_o * un_o * un_o) + ptot_o;
-        } else if constexpr (Dir == 2) {
+        } else {
             flux.mx2 = (d_o * un_o * un_o) + ptot_o;
         }
+
         return flux;
     }
 };

@@ -16,7 +16,7 @@ module load \
 set -x
 cd "${SLURM_SUBMIT_DIR}" || exit
 
-mkdir -p slurm_out results/ruche/a100
+mkdir -p slurm_out results/ruche/
 
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
 export OMP_PROC_BIND=true
@@ -26,7 +26,7 @@ BENCHMARK_FILTER=${1:-""}
 # include SLURM_JOB_ID in the JSON output filename
 ./build-a100/benchmarks/euler_benchmarks \
   --benchmark_out_format=json \
-  --benchmark_out=./results/ruche/a100/"[${SLURM_JOB_ID}]_a100-${BENCHMARK_FILTER}.json" # --benchmark_filter="${BENCHMARK_FILTER}" \
+  --benchmark_out=./results/ruche/"[${SLURM_JOB_ID}]_a100-${BENCHMARK_FILTER}.json" # --benchmark_filter="${BENCHMARK_FILTER}" \
 
 ##SBATCH --exclusive
 ##SBATCH --hint=nomultithread

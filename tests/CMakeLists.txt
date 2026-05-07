@@ -9,6 +9,6 @@ add_executable(euler_tests)
 target_link_libraries(euler_tests PRIVATE euler_operators euler_utils GTest::gtest Kokkos::kokkos)
 target_sources(
     euler_tests
-    PRIVATE main.cpp test_prim_to_cons.cpp test_cons_to_prim.cpp test_time_step.cpp
+    PRIVATE main.cpp test_prim_to_cons.cpp test_cons_to_prim.cpp test_time_step.cpp test_godunov.cpp
 )
 gtest_discover_tests(euler_tests DISCOVERY_MODE PRE_TEST)

@@ -22,8 +22,12 @@ cmake --build build-benchmark
 cmake --install build-benchmark --prefix "$benchmark_ROOT"
 rm -rf build-benchmark benchmark
 
-# git clone --branch fix-simd-from-4.7.1 --depth 1 https://github.com/tpadioleau/kokkos.git
-git clone --branch 5.0.0 --depth 1 https://github.com/kokkos/kokkos.git
+rm -rf build-kokkos kokkos
+
+git clone https://github.com/kokkos/kokkos.git
+cd kokkos || exit
+git checkout 7f8988b4d
+cd .. || exit
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_STANDARD=20 \
@@ -33,7 +37,7 @@ cmake \
   -D Kokkos_ENABLE_OPENMP=ON \
   -B build-kokkos \
   -S kokkos
-cmake --build build-kokkos
+cmake --build build-kokkos --parallel 8
 cmake --install build-kokkos --prefix "$Kokkos_ROOT"
 rm -rf build-kokkos kokkos
 
@@ -48,4 +52,4 @@ cmake --install build-gtest --prefix "$gtest_ROOT"
 rm -rf build-gtest googletest
 
 cmake -D CMAKE_BUILD_TYPE=Release -B build-skx
-cmake --build build-skx
+cmake --build build-skx --parallel 8

@@ -10,8 +10,7 @@ module load \
 export install_dir=$PWD/opt/a100
 export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
-
-rm -rf build-benchmark benchmark build-kokkos kokkos build-a100
+export gtest_ROOT=$install_dir/gtest
 
 git clone --branch v1.9.4 --depth 1 https://github.com/google/benchmark.git
 cmake \
@@ -24,7 +23,11 @@ cmake --build build-benchmark
 cmake --install build-benchmark --prefix "$benchmark_ROOT"
 rm -rf build-benchmark benchmark
 
-git clone --branch 5.0.0 --depth 1 https://github.com/kokkos/kokkos.git
+git clone https://github.com/kokkos/kokkos.git
+cd kokkos || exit
+git checkout 7f8988b4d
+cd .. || exit
+
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_STANDARD=20 \
@@ -37,6 +40,16 @@ cmake \
 cmake --build build-kokkos
 cmake --install build-kokkos --prefix "$Kokkos_ROOT"
 rm -rf build-kokkos kokkos
+
+git clone --branch v1.17.0 --depth 1 https://github.com/google/googletest.git
+cmake \
+  -D CMAKE_BUILD_TYPE=Release \
+  -D CMAKE_CXX_STANDARD=20 \
+  -B build-gtest \
+  -S googletest
+cmake --build build-gtest
+cmake --install build-gtest --prefix "$gtest_ROOT"
+rm -rf build-gtest googletest
 
 cmake -D CMAKE_BUILD_TYPE=Release -B build-a100
 cmake --build build-a100

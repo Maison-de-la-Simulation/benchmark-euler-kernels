@@ -7,6 +7,7 @@
 #SBATCH --partition=cpu_short
 #SBATCH --exclusive
 #SBATCH --hint=nomultithread
+#SBATCH --nodes=1
 
 module purge
 module load \
@@ -16,10 +17,11 @@ module load \
 set -x
 cd "${SLURM_SUBMIT_DIR}" || exit
 
-mkdir -p slurm_out results/ruche/skx
+mkdir -p slurm_out results/bm_json/ruche/
 
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
-export OMP_PROC_BIND=true
+export OMP_PROC_BIND=close
+export OMP_PLACES=numa_domains
 
 BENCHMARK_FILTER=${1:-""}
 
@@ -27,4 +29,4 @@ BENCHMARK_FILTER=${1:-""}
 ./build-skx/benchmarks/euler_benchmarks \
   --benchmark_filter="${BENCHMARK_FILTER}" \
   --benchmark_out_format=json \
-  --benchmark_out=./results/ruche/skx/"[${SLURM_JOB_ID}]_skx-${BENCHMARK_FILTER}.json"
+  --benchmark_out=./results/bm_json/ruche/"[${SLURM_JOB_ID}]_skx-${BENCHMARK_FILTER}.json"

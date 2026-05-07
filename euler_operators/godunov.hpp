@@ -4,6 +4,7 @@
 #include <type_traits>
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_SIMD.hpp>
 #include <euler_arrays.hpp>
 #include <hllc.hpp>
 #include <perfect_gas.hpp>
@@ -28,6 +29,9 @@ void godunov(
         hllc const& riemann_solver,
         T const dt)
 {
+    namespace KE = Kokkos::Experimental;
+    using simd_t = KE::simd<T>;
+
     Kokkos::Array<T, 3> const ds = {mesh.ds0(), mesh.ds1(), mesh.ds2()};
     T const dtodv = dt / mesh.dv();
 
@@ -89,4 +93,147 @@ void godunov(
                 cons.mx2 -= dtodv * flux.mx2;
                 store(cons, cons_arrays, i, j, k);
             });
+}
+
+template <class SimdType, class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
+void godunov_kernel(
+        Kokkos::DefaultExecutionSpace const& exec_space,
+        EulerPrimArrays<Kokkos::mdspan<
+                T const,
+                Kokkos::extents<IndexType, E0, E1, E2>,
+                Kokkos::layout_left>> const& prim_arrays,
+        EulerConsArrays<Kokkos::mdspan<
+                T,
+                Kokkos::extents<IndexType, E0, E1, E2>,
+                Kokkos::layout_left>> const& cons_arrays,
+        IndexType nx_begin,
+        IndexType nx_end,
+        PerfectGas<T> const& eos,
+        UniformMesh3d<T> const& mesh,
+        hllc const& riemann_solver,
+        T const dt)
+{
+    constexpr IndexType width = SimdType::size();
+    IndexType const nx_blocks = (nx_end - nx_begin) / width;
+    IndexType const ny = prim_arrays.d.extent(1);
+    IndexType const nz = prim_arrays.d.extent(2);
+
+    // layout_left strides: stride in y = extent(0), stride in z = extent(0)*extent(1)
+    IndexType const stride_y = prim_arrays.d.extent(0);
+    IndexType const stride_z = prim_arrays.d.extent(0) * prim_arrays.d.extent(1);
+
+    Kokkos::Array<T, 3> const ds = {mesh.ds0(), mesh.ds1(), mesh.ds2()};
+    T const dtodv = dt / mesh.dv();
+
+    Kokkos::layout_left::mapping const common_mapping = prim_arrays.d.mapping();
+    EulerPrimArrays const prim_ptrs = data_handle(prim_arrays);
+    EulerConsArrays const cons_ptrs = data_handle(cons_arrays);
+
+    Kokkos::parallel_for(
+            "godunov_kernel",
+            Kokkos::MDRangePolicy<
+                    Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
+                    Kokkos::IndexType<IndexType>>(
+                    exec_space,
+                    {0, 1, 1},
+                    {nx_blocks, ny - 1, nz - 1}), // nx_begin already acouting for ghost cells
+            KOKKOS_LAMBDA(IndexType const bi, IndexType const j, IndexType const k) {
+                IndexType const base = common_mapping(nx_begin + (bi * width), j, k);
+                EulerPrim<SimdType> const prim = load<SimdType>(prim_arrays, base);
+                EulerFlux<SimdType> flux {};
+
+                {
+                    EulerPrim const prim_L = load<SimdType>(prim_arrays, base - 1);
+                    EulerPrim const prim_R = load<SimdType>(prim_arrays, base + 1);
+                    EulerFlux const flux_L = riemann_solver(dir_t<0>(), eos, prim_L, prim);
+                    EulerFlux const flux_R = riemann_solver(dir_t<0>(), eos, prim, prim_R);
+                    flux.d += ds[0] * (flux_R.d - flux_L.d);
+                    flux.e += ds[0] * (flux_R.e - flux_L.e);
+                    flux.mx0 += ds[0] * (flux_R.mx0 - flux_L.mx0);
+                    flux.mx1 += ds[0] * (flux_R.mx1 - flux_L.mx1);
+                    flux.mx2 += ds[0] * (flux_R.mx2 - flux_L.mx2);
+                }
+                {
+                    EulerPrim const prim_L = load<SimdType>(prim_arrays, base - stride_y);
+                    EulerPrim const prim_R = load<SimdType>(prim_arrays, base + stride_y);
+                    EulerFlux const flux_L = riemann_solver(dir_t<1>(), eos, prim_L, prim);
+                    EulerFlux const flux_R = riemann_solver(dir_t<1>(), eos, prim, prim_R);
+                    flux.d += ds[1] * (flux_R.d - flux_L.d);
+                    flux.e += ds[1] * (flux_R.e - flux_L.e);
+                    flux.mx0 += ds[1] * (flux_R.mx0 - flux_L.mx0);
+                    flux.mx1 += ds[1] * (flux_R.mx1 - flux_L.mx1);
+                    flux.mx2 += ds[1] * (flux_R.mx2 - flux_L.mx2);
+                }
+                {
+                    EulerPrim const prim_L = load<SimdType>(prim_arrays, base - stride_z);
+                    EulerPrim const prim_R = load<SimdType>(prim_arrays, base + stride_z);
+                    EulerFlux const flux_L = riemann_solver(dir_t<2>(), eos, prim_L, prim);
+                    EulerFlux const flux_R = riemann_solver(dir_t<2>(), eos, prim, prim_R);
+                    flux.d += ds[2] * (flux_R.d - flux_L.d);
+                    flux.e += ds[2] * (flux_R.e - flux_L.e);
+                    flux.mx0 += ds[2] * (flux_R.mx0 - flux_L.mx0);
+                    flux.mx1 += ds[2] * (flux_R.mx1 - flux_L.mx1);
+                    flux.mx2 += ds[2] * (flux_R.mx2 - flux_L.mx2);
+                }
+
+                EulerCons cons = load<SimdType>(cons_ptrs, base);
+                cons.d -= dtodv * flux.d;
+                cons.e -= dtodv * flux.e;
+                cons.mx0 -= dtodv * flux.mx0;
+                cons.mx1 -= dtodv * flux.mx1;
+                cons.mx2 -= dtodv * flux.mx2;
+                store<SimdType>(cons, cons_ptrs, base);
+            });
+}
+
+template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
+void godunov_vec(
+        Kokkos::DefaultExecutionSpace const& exec_space,
+        EulerPrimArrays<Kokkos::mdspan<
+                T const,
+                Kokkos::extents<IndexType, E0, E1, E2>,
+                Kokkos::layout_left>> const& prim_arrays,
+        EulerConsArrays<Kokkos::mdspan<
+                T,
+                Kokkos::extents<IndexType, E0, E1, E2>,
+                Kokkos::layout_left>> const& cons_arrays,
+        PerfectGas<T> const& eos,
+        UniformMesh3d<T> const& mesh,
+        hllc const& riemann_solver,
+        T const dt)
+{
+    namespace KE = Kokkos::Experimental;
+    using simd_t = KE::simd<T>;
+    using simd_scalar_t = KE::basic_simd<T, KE::simd_abi::scalar>;
+
+    // interior x-range is [1, nx-1)
+    IndexType const nx = prim_arrays.d.extent(0);
+    IndexType const nx_begin = 1;
+    IndexType const nx_inner = nx - 2; // number of interior cells
+    IndexType const vec_end = nx_begin + ((nx_inner / simd_t::size()) * simd_t::size());
+    IndexType const nx_end = nx - 1;
+
+    godunov_kernel<simd_t>(
+            exec_space,
+            prim_arrays,
+            cons_arrays,
+            nx_begin,
+            vec_end,
+            eos,
+            mesh,
+            riemann_solver,
+            dt);
+
+    if (vec_end < nx_end) {
+        godunov_kernel<simd_scalar_t>(
+                exec_space,
+                prim_arrays,
+                cons_arrays,
+                vec_end,
+                nx_end,
+                eos,
+                mesh,
+                riemann_solver,
+                dt);
+    }
 }
