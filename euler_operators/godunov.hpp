@@ -29,9 +29,6 @@ void godunov(
         hllc const& riemann_solver,
         T const dt)
 {
-    namespace KE = Kokkos::Experimental;
-    using simd_t = KE::simd<T>;
-
     Kokkos::Array<T, 3> const ds = {mesh.ds0(), mesh.ds1(), mesh.ds2()};
     T const dtodv = dt / mesh.dv();
 
