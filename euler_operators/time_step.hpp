@@ -97,13 +97,13 @@ T time_step_kernel(
                 Kokkos::layout_left>> const& prim_arrays,
         PerfectGas<T> const& eos,
         UniformMesh3d<T> const& mesh,
-        IndexType nx_begin,
-        IndexType nx_end)
+        IndexType n0_begin,
+        IndexType n0_end)
 {
     constexpr IndexType width = SimdType::size();
-    IndexType const nx_blocks = (nx_end - nx_begin) / width;
-    IndexType const ny = prim_arrays.d.extent(1);
-    IndexType const nz = prim_arrays.d.extent(2);
+    IndexType const n0_blocks = (n0_end - n0_begin) / width;
+    IndexType const n1 = prim_arrays.d.extent(1);
+    IndexType const n2 = prim_arrays.d.extent(2);
 
     T const invdx0 = 1 / mesh.dx0();
     T const invdx1 = 1 / mesh.dx1();
@@ -117,9 +117,9 @@ T time_step_kernel(
             "time_step_vec",
             Kokkos::MDRangePolicy<
                     Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
-                    Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {nx_blocks, ny, nz}),
+                    Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {n0_blocks, n1, n2}),
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k, SimdType & invdt_loc) {
-                IndexType const base = prim_mapping(nx_begin + (bi * width), j, k);
+                IndexType const base = prim_mapping(n0_begin + (bi * width), j, k);
                 EulerPrim const prim = load<SimdType>(prim_ptrs, base);
                 SimdType const cs = eos.speed_of_sound(prim.d, prim.p);
                 SimdType const cx0 = cs + Kokkos::abs(prim.ux0);
@@ -147,14 +147,14 @@ T time_step_vec(
     using simd_t = KE::simd<T>;
     using simd_scalar_t = KE::basic_simd<T, KE::simd_abi::scalar>;
 
-    IndexType const nx = prim_arrays.d.extent(0);
-    IndexType const vec_end = (nx / simd_t::size()) * simd_t::size();
+    IndexType const n0 = prim_arrays.d.extent(0);
+    IndexType const vec_end = (n0 / simd_t::size()) * simd_t::size();
 
     T invdt = time_step_kernel<simd_t>(exec_space, prim_arrays, eos, mesh, IndexType(0), vec_end);
 
-    if (vec_end < nx) {
+    if (vec_end < n0) {
         T const invdt_tail
-                = time_step_kernel<simd_scalar_t>(exec_space, prim_arrays, eos, mesh, vec_end, nx);
+                = time_step_kernel<simd_scalar_t>(exec_space, prim_arrays, eos, mesh, vec_end, n0);
         invdt = Kokkos::max(invdt, invdt_tail);
     }
     return 1 / invdt;

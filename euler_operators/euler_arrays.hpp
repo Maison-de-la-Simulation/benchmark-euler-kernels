@@ -133,15 +133,15 @@ EulerPrimArrays<typename AP::data_handle_type> data_handle(
 template <class MdspanOut, class View>
 EulerPrimArrays<MdspanOut> to_mdspan(
         EulerPrimArrays<View> const& prim_arrays,
-        typename MdspanOut::index_type nx,
-        typename MdspanOut::index_type ny,
-        typename MdspanOut::index_type nz) noexcept
+        typename MdspanOut::index_type n0,
+        typename MdspanOut::index_type n1,
+        typename MdspanOut::index_type n2) noexcept
 {
-    return {.d = MdspanOut(prim_arrays.d.data(), nx, ny, nz),
-            .p = MdspanOut(prim_arrays.p.data(), nx, ny, nz),
-            .ux0 = MdspanOut(prim_arrays.ux0.data(), nx, ny, nz),
-            .ux1 = MdspanOut(prim_arrays.ux1.data(), nx, ny, nz),
-            .ux2 = MdspanOut(prim_arrays.ux2.data(), nx, ny, nz)};
+    return {.d = MdspanOut(prim_arrays.d.data(), n0, n1, n2),
+            .p = MdspanOut(prim_arrays.p.data(), n0, n1, n2),
+            .ux0 = MdspanOut(prim_arrays.ux0.data(), n0, n1, n2),
+            .ux1 = MdspanOut(prim_arrays.ux1.data(), n0, n1, n2),
+            .ux2 = MdspanOut(prim_arrays.ux2.data(), n0, n1, n2)};
 }
 
 template <
@@ -339,15 +339,15 @@ EulerConsArrays<typename AP::data_handle_type> data_handle(
 template <class MdspanOut, class View>
 EulerConsArrays<MdspanOut> to_mdspan(
         EulerConsArrays<View> const& cons_arrays,
-        typename MdspanOut::index_type nx,
-        typename MdspanOut::index_type ny,
-        typename MdspanOut::index_type nz) noexcept
+        typename MdspanOut::index_type n0,
+        typename MdspanOut::index_type n1,
+        typename MdspanOut::index_type n2) noexcept
 {
-    return {.d = MdspanOut(cons_arrays.d.data(), nx, ny, nz),
-            .e = MdspanOut(cons_arrays.e.data(), nx, ny, nz),
-            .mx0 = MdspanOut(cons_arrays.mx0.data(), nx, ny, nz),
-            .mx1 = MdspanOut(cons_arrays.mx1.data(), nx, ny, nz),
-            .mx2 = MdspanOut(cons_arrays.mx2.data(), nx, ny, nz)};
+    return {.d = MdspanOut(cons_arrays.d.data(), n0, n1, n2),
+            .e = MdspanOut(cons_arrays.e.data(), n0, n1, n2),
+            .mx0 = MdspanOut(cons_arrays.mx0.data(), n0, n1, n2),
+            .mx1 = MdspanOut(cons_arrays.mx1.data(), n0, n1, n2),
+            .mx2 = MdspanOut(cons_arrays.mx2.data(), n0, n1, n2)};
 }
 
 template <
