@@ -195,32 +195,6 @@ KOKKOS_FORCEINLINE_FUNCTION EulerPrim<SimdType> load(
 }
 
 template <
-        class SimdType,
-        class ElementType,
-        class IndexType,
-        std::size_t E0,
-        std::size_t E1,
-        std::size_t E2,
-        class AP>
-KOKKOS_FORCEINLINE_FUNCTION EulerPrim<SimdType> load(
-        EulerPrimArrays<Kokkos::mdspan<
-                ElementType,
-                Kokkos::extents<IndexType, E0, E1, E2>,
-                Kokkos::layout_left, // layout_left guarantees contiguous x-stride
-                AP>> const& prim_arrays,
-        IndexType const base) noexcept
-{
-    namespace KE = Kokkos::Experimental;
-    return {
-            .d = SimdType(prim_arrays.d.data_handle() + base, KE::simd_flag_default),
-            .p = SimdType(prim_arrays.p.data_handle() + base, KE::simd_flag_default),
-            .ux0 = SimdType(prim_arrays.ux0.data_handle() + base, KE::simd_flag_default),
-            .ux1 = SimdType(prim_arrays.ux1.data_handle() + base, KE::simd_flag_default),
-            .ux2 = SimdType(prim_arrays.ux2.data_handle() + base, KE::simd_flag_default),
-    };
-}
-
-template <
         class ElementType,
         class IndexType,
         std::size_t E0,
@@ -383,32 +357,6 @@ KOKKOS_FUNCTION EulerCons<std::remove_const_t<T>> load(
             .mx0 = cons_ptrs.mx0[i],
             .mx1 = cons_ptrs.mx1[i],
             .mx2 = cons_ptrs.mx2[i]};
-}
-
-template <
-        class SimdType,
-        class ElementType,
-        class IndexType,
-        std::size_t E0,
-        std::size_t E1,
-        std::size_t E2,
-        class AP>
-KOKKOS_FORCEINLINE_FUNCTION EulerCons<SimdType> load(
-        EulerConsArrays<Kokkos::mdspan<
-                ElementType,
-                Kokkos::extents<IndexType, E0, E1, E2>,
-                Kokkos::layout_left, // layout_left guarantees contiguous x-stride
-                AP>> const& cons_arrays,
-        IndexType const base) noexcept
-{
-    namespace KE = Kokkos::Experimental;
-    return {
-            .d = SimdType(cons_arrays.d.data_handle() + base, KE::simd_flag_default),
-            .e = SimdType(cons_arrays.e.data_handle() + base, KE::simd_flag_default),
-            .mx0 = SimdType(cons_arrays.mx0.data_handle() + base, KE::simd_flag_default),
-            .mx1 = SimdType(cons_arrays.mx1.data_handle() + base, KE::simd_flag_default),
-            .mx2 = SimdType(cons_arrays.mx2.data_handle() + base, KE::simd_flag_default),
-    };
 }
 
 template <class SimdType, class T, class IndexType>
