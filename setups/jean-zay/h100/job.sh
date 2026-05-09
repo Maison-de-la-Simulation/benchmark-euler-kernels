@@ -24,6 +24,7 @@ module load \
 export install_dir=$PWD/opt/h100
 export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
+export GTest_ROOT=$install_dir/googletest
 
 cmake \
   -D BENCHMARK_ENABLE_TESTING=OFF \
@@ -48,6 +49,15 @@ cmake \
 cmake --build build-kokkos --parallel 24
 cmake --install build-kokkos --prefix "$Kokkos_ROOT"
 rm -rf build-kokkos kokkos
+
+cmake \
+  -D CMAKE_BUILD_TYPE=Release \
+  -D CMAKE_CXX_STANDARD=20 \
+  -B build-googletest \
+  -S googletest
+cmake --build build-googletest --parallel 24
+cmake --install build-googletest --prefix "$GTest_ROOT"
+rm -rf build-googletest googletest
 
 cmake -D CMAKE_BUILD_TYPE=Release -B build-h100
 cmake --build build-h100 --parallel 24

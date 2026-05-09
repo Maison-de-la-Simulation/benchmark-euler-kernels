@@ -6,7 +6,7 @@ export CXX=g++-13
 export install_dir=$PWD/opt/local
 export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
-export gtest_ROOT=$install_dir/gtest
+export GTest_ROOT=$install_dir/googletest
 
 git clone --branch v1.9.4 --depth 1 https://github.com/google/benchmark.git
 cmake \
@@ -40,11 +40,11 @@ git clone --branch v1.17.0 --depth 1 https://github.com/google/googletest.git
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_STANDARD=20 \
-  -B build-gtest \
+  -B build-googletest \
   -S googletest
-cmake --build build-gtest
-cmake --install build-gtest --prefix "$gtest_ROOT"
-rm -rf build-gtest googletest
+cmake --build build-googletest
+cmake --install build-googletest --prefix "$GTest_ROOT"
+rm -rf build-googletest googletest
 
 cmake -D CMAKE_BUILD_TYPE=Release -B build-skx
 cmake --build build-local
