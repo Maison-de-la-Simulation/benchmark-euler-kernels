@@ -20,18 +20,16 @@ void prim_to_cons(
                 Kokkos::layout_left>> const& cons_arrays,
         PerfectGas<T> const& eos)
 {
+    EulerPrimArrays const prim_ptrs = data_handle(prim_arrays);
+    EulerConsArrays const cons_ptrs = data_handle(cons_arrays);
+
     Kokkos::parallel_for(
             "prim_to_cons",
-            Kokkos::MDRangePolicy<
-                    Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
-                    Kokkos::IndexType<IndexType>>(
-                    exec_space,
-                    {0, 0, 0},
-                    {prim_arrays.d.extent(0), prim_arrays.d.extent(1), prim_arrays.d.extent(2)}),
-            KOKKOS_LAMBDA(IndexType const i, IndexType const j, IndexType const k) {
-                EulerPrim const prim = load(prim_arrays, i, j, k);
+            Kokkos::RangePolicy<Kokkos::IndexType<IndexType>>(exec_space, 0, prim_arrays.d.size()),
+            KOKKOS_LAMBDA(IndexType const base) {
+                EulerPrim const prim = load(prim_ptrs, base);
                 EulerCons const cons = to_cons(prim, eos.internal_energy(prim.d, prim.p));
-                store(cons, cons_arrays, i, j, k);
+                store(cons, cons_ptrs, base);
             });
 }
 
