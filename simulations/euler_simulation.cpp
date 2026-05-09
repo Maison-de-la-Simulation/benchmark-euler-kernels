@@ -26,9 +26,9 @@ int main(int argc, char** argv)
     using index_t = int;
     using real_t = double;
 
-    int const nx = 128;
-    int const nt = 200;
-    int const output_freq = 10;
+    int const nx = 256;
+    int const nt = 10'000;
+    int const output_freq = 0;
     real_t const cfl_factor = 0.49;
     real_t const gamma = 1.4;
 
