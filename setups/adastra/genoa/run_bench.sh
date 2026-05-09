@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --account=cad16293
-#SBATCH --job-name=bench_genoa
+#SBATCH --job-name=euler-benchmarks-genoa
 #SBATCH --output=./slurm_out/%x.o%j
 #SBATCH --ntasks=1
 #SBATCH --nodes=1

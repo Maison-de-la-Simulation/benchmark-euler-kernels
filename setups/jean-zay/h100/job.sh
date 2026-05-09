@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=spack              # Job name
+#SBATCH --job-name=euler-benchmarks-h100
 #SBATCH --account=ksw@h100
 #SBATCH --constraint=h100
 #SBATCH --ntasks=1                   # Number of MPI processes (= total number of GPU)

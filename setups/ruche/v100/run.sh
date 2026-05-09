@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=benchmark_v100
+#SBATCH --job-name=euler-benchmarks-v100
 #SBATCH --output=./slurm_out/%x.o%j
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
