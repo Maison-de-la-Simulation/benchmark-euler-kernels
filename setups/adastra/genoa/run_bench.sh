@@ -1,4 +1,5 @@
 #!/bin/bash
+
 #SBATCH --account=cad16293
 #SBATCH --job-name=bench_genoa
 #SBATCH --output=./slurm_out/%x.o%j

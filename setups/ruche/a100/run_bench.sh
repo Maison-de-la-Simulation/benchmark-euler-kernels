@@ -1,4 +1,5 @@
 #!/bin/bash
+
 #SBATCH --job-name=bench_skx
 #SBATCH --output=./slurm_out/%x.o%j
 #SBATCH --ntasks=1
