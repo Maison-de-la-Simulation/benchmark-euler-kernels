@@ -65,4 +65,4 @@ cmake \
   -B build-h100
 cmake --build build-h100 --parallel 24
 
-srun ./build-h100/euler_benchmarks --kokkos-print-configuration
+srun ./build-h100/benchmarks/euler_benchmarks --kokkos-print-configuration
