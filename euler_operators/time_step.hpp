@@ -23,16 +23,12 @@ T time_step(
     T const invdx1 = 1 / mesh.dx1();
     T const invdx2 = 1 / mesh.dx2();
     T invdt {};
+    EulerPrimArrays const prim_ptrs = data_handle(prim_arrays);
     Kokkos::parallel_reduce(
             "time_step_exp1_structured",
-            Kokkos::MDRangePolicy<
-                    Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
-                    Kokkos::IndexType<IndexType>>(
-                    exec_space,
-                    {0, 0, 0},
-                    {prim_arrays.d.extent(0), prim_arrays.d.extent(1), prim_arrays.d.extent(2)}),
-            KOKKOS_LAMBDA(IndexType const i, IndexType const j, IndexType const k, T& invdt_loc) {
-                EulerPrim const prim = load(prim_arrays, i, j, k);
+            Kokkos::RangePolicy<Kokkos::IndexType<IndexType>>(exec_space, 0, prim_arrays.d.size()),
+            KOKKOS_LAMBDA(IndexType const base, T& invdt_loc) {
+                EulerPrim const prim = load(prim_ptrs, base);
                 T const cs = eos.speed_of_sound(prim.d, prim.p);
                 T const cx0 = cs + Kokkos::abs(prim.ux0);
                 T const cx1 = cs + Kokkos::abs(prim.ux1);
