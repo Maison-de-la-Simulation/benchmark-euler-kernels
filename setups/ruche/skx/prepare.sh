@@ -11,14 +11,14 @@ export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
 export GTest_ROOT=$install_dir/googletest
 
-git clone --branch v1.9.4 --depth 1 https://github.com/google/benchmark.git
+git clone --branch v1.9.5 --depth 1 https://github.com/google/benchmark.git
 cmake \
   -D BENCHMARK_ENABLE_TESTING=OFF \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_STANDARD=20 \
   -B build-benchmark \
   -S benchmark
-cmake --build build-benchmark
+cmake --build build-benchmark --parallel 8
 cmake --install build-benchmark --prefix "$benchmark_ROOT"
 rm -rf build-benchmark benchmark
 

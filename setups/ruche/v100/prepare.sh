@@ -12,7 +12,7 @@ export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
 export GTest_ROOT=$install_dir/googletest
 
-git clone --branch v1.9.4 --depth 1 https://github.com/google/benchmark.git
+git clone --branch v1.9.5 --depth 1 https://github.com/google/benchmark.git
 cmake \
   -D BENCHMARK_ENABLE_TESTING=OFF \
   -D CMAKE_BUILD_TYPE=Release \
