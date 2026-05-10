@@ -17,7 +17,7 @@ module purge
 
 module load \
     arch/h100 \
-    gcc/12.2.0 \
+    gcc/14.2.0 \
     cmake/3.31.4 \
     cuda/12.8.0
 
