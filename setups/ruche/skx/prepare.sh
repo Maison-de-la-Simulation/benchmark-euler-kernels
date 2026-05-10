@@ -24,15 +24,12 @@ rm -rf build-benchmark benchmark
 
 rm -rf build-kokkos kokkos
 
-git clone https://github.com/kokkos/kokkos.git
-cd kokkos || exit
-git checkout 7f8988b4d
-cd .. || exit
+git clone --branch 5.1.1 --depth 1 https://github.com/kokkos/kokkos.git
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_STANDARD=20 \
   -D Kokkos_ARCH_SKX=ON \
-  -D Kokkos_ENABLE_DEPRECATED_CODE_4=OFF \
+  -D Kokkos_ENABLE_DEPRECATED_CODE_5=OFF \
   -D Kokkos_ENABLE_DEPRECATION_WARNINGS=OFF \
   -D Kokkos_ENABLE_OPENMP=ON \
   -B build-kokkos \

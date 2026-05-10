@@ -3,10 +3,12 @@
 set -e
 
 module purge
+
 module load \
   gcc/13.4.0/gcc-15.1.0 \
   cmake/3.31.9/gcc-15.1.0 \
   cuda/12.8.1/none-none
+
 export install_dir=$PWD/opt/a100
 export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
@@ -23,17 +25,13 @@ cmake --build build-benchmark
 cmake --install build-benchmark --prefix "$benchmark_ROOT"
 rm -rf build-benchmark benchmark
 
-git clone https://github.com/kokkos/kokkos.git
-cd kokkos || exit
-git checkout 7f8988b4d
-cd .. || exit
-
+git clone --branch 5.1.1 --depth 1 https://github.com/kokkos/kokkos.git
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_STANDARD=20 \
   -D Kokkos_ARCH_AMPERE80=ON \
   -D Kokkos_ENABLE_CUDA=ON \
-  -D Kokkos_ENABLE_DEPRECATED_CODE_4=OFF \
+  -D Kokkos_ENABLE_DEPRECATED_CODE_5=OFF \
   -D Kokkos_ENABLE_DEPRECATION_WARNINGS=OFF \
   -B build-kokkos \
   -S kokkos
