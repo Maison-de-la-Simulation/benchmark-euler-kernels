@@ -47,5 +47,8 @@ cmake --build build-googletest
 cmake --install build-googletest --prefix "$GTest_ROOT"
 rm -rf build-googletest googletest
 
-cmake -D CMAKE_BUILD_TYPE=Release -B build-v100
+cmake \
+  -D CMAKE_BUILD_TYPE=Release \
+  -D CMAKE_CXX_FLAGS="-fno-ipa-sra" \
+  -B build-v100
 cmake --build build-v100

@@ -52,5 +52,7 @@ cmake --build build-googletest
 cmake --install build-googletest --prefix "$GTest_ROOT"
 rm -rf build-googletest googletest
 
-cmake -D CMAKE_BUILD_TYPE=Release -B build-mi300
+cmake \
+  -D CMAKE_BUILD_TYPE=Release \
+  -B build-mi300
 cmake --build build-mi300 --parallel 8

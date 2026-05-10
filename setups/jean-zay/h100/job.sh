@@ -59,7 +59,10 @@ cmake --build build-googletest --parallel 24
 cmake --install build-googletest --prefix "$GTest_ROOT"
 rm -rf build-googletest googletest
 
-cmake -D CMAKE_BUILD_TYPE=Release -B build-h100
+cmake \
+  -D CMAKE_BUILD_TYPE=Release \
+  -D CMAKE_CXX_FLAGS="-fno-ipa-sra" \
+  -B build-h100
 cmake --build build-h100 --parallel 24
 
 srun ./build-h100/euler_benchmarks --kokkos-print-configuration

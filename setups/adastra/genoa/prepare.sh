@@ -46,5 +46,7 @@ cmake --build build-googletest
 cmake --install build-googletest --prefix "$GTest_ROOT"
 rm -rf build-googletest googletest
 
-cmake -D CMAKE_BUILD_TYPE=Release -B build-genoa
+cmake \
+  -D CMAKE_BUILD_TYPE=Release \
+  -B build-genoa
 cmake --build build-genoa --parallel 8
