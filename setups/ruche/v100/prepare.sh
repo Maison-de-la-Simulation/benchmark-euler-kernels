@@ -19,7 +19,7 @@ cmake \
   -D CMAKE_CXX_STANDARD=20 \
   -B build-benchmark \
   -S benchmark
-cmake --build build-benchmark
+cmake --build build-benchmark --parallel 8
 cmake --install build-benchmark --prefix "$benchmark_ROOT"
 rm -rf build-benchmark benchmark
 
@@ -33,7 +33,7 @@ cmake \
   -D Kokkos_ENABLE_DEPRECATION_WARNINGS=OFF \
   -B build-kokkos \
   -S kokkos
-cmake --build build-kokkos
+cmake --build build-kokkos --parallel 8
 cmake --install build-kokkos --prefix "$Kokkos_ROOT"
 rm -rf build-kokkos kokkos
 
@@ -43,7 +43,7 @@ cmake \
   -D CMAKE_CXX_STANDARD=20 \
   -B build-googletest \
   -S googletest
-cmake --build build-googletest
+cmake --build build-googletest --parallel 8
 cmake --install build-googletest --prefix "$GTest_ROOT"
 rm -rf build-googletest googletest
 
@@ -51,4 +51,4 @@ cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_FLAGS="-fno-ipa-sra" \
   -B build-v100
-cmake --build build-v100
+cmake --build build-v100 --parallel 8

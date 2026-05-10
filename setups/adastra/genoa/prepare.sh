@@ -42,7 +42,7 @@ cmake \
   -D CMAKE_CXX_STANDARD=20 \
   -B build-googletest \
   -S googletest
-cmake --build build-googletest
+cmake --build build-googletest --parallel 8
 cmake --install build-googletest --prefix "$GTest_ROOT"
 rm -rf build-googletest googletest
 

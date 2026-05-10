@@ -39,11 +39,11 @@ cmake \
   -D CMAKE_CXX_STANDARD=20 \
   -B build-googletest \
   -S googletest
-cmake --build build-googletest
+cmake --build build-googletest --parallel 4
 cmake --install build-googletest --prefix "$GTest_ROOT"
 rm -rf build-googletest googletest
 
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -B build-skx
-cmake --build build-local
+cmake --build build-local --parallel 4
