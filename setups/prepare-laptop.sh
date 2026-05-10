@@ -46,4 +46,4 @@ rm -rf build-googletest googletest
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -B build-skx
-cmake --build build-local --parallel 4
+cmake --build build-skx --parallel 4
