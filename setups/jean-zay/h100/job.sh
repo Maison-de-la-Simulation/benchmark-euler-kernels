@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=spack              # Job name
+#SBATCH --job-name=euler-benchmarks-h100
 #SBATCH --account=ksw@h100
 #SBATCH --constraint=h100
 #SBATCH --ntasks=1                   # Number of MPI processes (= total number of GPU)
@@ -17,13 +17,14 @@ module purge
 
 module load \
     arch/h100 \
-    gcc/12.2.0 \
+    gcc/14.2.0 \
     cmake/3.31.4 \
     cuda/12.8.0
 
 export install_dir=$PWD/opt/h100
 export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
+export GTest_ROOT=$install_dir/googletest
 
 cmake \
   -D BENCHMARK_ENABLE_TESTING=OFF \
@@ -41,7 +42,7 @@ cmake \
   -D CMAKE_CXX_STANDARD=20 \
   -D Kokkos_ARCH_HOPPER90=ON \
   -D Kokkos_ENABLE_CUDA=ON \
-  -D Kokkos_ENABLE_DEPRECATED_CODE_4=OFF \
+  -D Kokkos_ENABLE_DEPRECATED_CODE_5=OFF \
   -D Kokkos_ENABLE_DEPRECATION_WARNINGS=OFF \
   -B build-kokkos \
   -S kokkos
@@ -49,7 +50,19 @@ cmake --build build-kokkos --parallel 24
 cmake --install build-kokkos --prefix "$Kokkos_ROOT"
 rm -rf build-kokkos kokkos
 
-cmake -D CMAKE_BUILD_TYPE=Release -B build-h100
+cmake \
+  -D CMAKE_BUILD_TYPE=Release \
+  -D CMAKE_CXX_STANDARD=20 \
+  -B build-googletest \
+  -S googletest
+cmake --build build-googletest --parallel 24
+cmake --install build-googletest --prefix "$GTest_ROOT"
+rm -rf build-googletest googletest
+
+cmake \
+  -D CMAKE_BUILD_TYPE=Release \
+  -D CMAKE_CXX_FLAGS="-fno-ipa-sra" \
+  -B build-h100
 cmake --build build-h100 --parallel 24
 
 srun ./build-h100/euler_benchmarks --kokkos-print-configuration
