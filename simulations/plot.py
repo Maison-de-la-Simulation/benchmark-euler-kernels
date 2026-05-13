@@ -28,6 +28,42 @@ ALL_BENCHMARKS.append("EulerSimulation")
 OUT_DIR = "results/plots"
 RES_DIR = "results/ruche/skx/"
 
+import numpy as np
+import pandas as pd
+
+def validate_bytes_cells_consistency(df):
+    """
+    Checks whether bytes_per_second and cells_per_second
+    are proportional with a stable bytes-per-cell factor.
+    """
+
+    if "bytes_per_second" not in df.columns or "cells_per_second" not in df.columns:
+        raise ValueError("Missing required columns")
+
+    ratios = df["bytes_per_second"] / df["cells_per_second"]
+
+    df = df.copy()
+    df["bytes_per_cell_estimate"] = ratios
+
+    summary = (
+        df.groupby(["benchmark", "hardware"])["bytes_per_cell_estimate"]
+        .agg(["mean", "std", "min", "max"])
+        .reset_index()
+    )
+
+    summary["rel_std"] = summary["std"] / summary["mean"]
+
+    print("\n=== Bytes-per-cell consistency check ===\n")
+    print(summary)
+
+    # flag suspicious cases
+    bad = summary[summary["rel_std"] > 0.05]
+
+    if not bad.empty:
+        print("\n⚠️ WARNING: unstable bytes/cell detected:")
+        print(bad)
+
+    return summary
 
 def latest_result(res_dir=RES_DIR, pattern="*.json"):
     """Find and return the most recently modified benchmark JSON file.
@@ -571,6 +607,7 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
 
     df = pd.concat(data, ignore_index=True)
 
+    validate_bytes_cells_consistency(df)
     bases = {b.replace("Vectorized", "") for b in df["benchmark"].unique()}
 
     # ----------------------------
@@ -682,6 +719,7 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
         plt.tight_layout()
         plt.savefig(out_dir / f"{base}_hw_compare.png", dpi=200)
         plt.close()
+
 plot_hw_scalar_vector("./results", "./results/new/")
 # plot_hw_speedup("./results", "./results/new/")
 # FILES = {
@@ -695,3 +733,5 @@ plot_hw_scalar_vector("./results", "./results/new/")
 #     "store.csv",
 #     cols=COLS,
 # )
+#
+
