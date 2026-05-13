@@ -31,37 +31,36 @@ RES_DIR = "results/ruche/skx/"
 import numpy as np
 import pandas as pd
 
-def validate_bytes_cells_consistency(df):
+def validate_bytes_cells(df, out_csv=None):
     """
     Checks whether bytes_per_second and cells_per_second
     are proportional with a stable bytes-per-cell factor.
+
+    Also saves per-benchmark/hardware ratios if out_csv is provided.
     """
 
     if "bytes_per_second" not in df.columns or "cells_per_second" not in df.columns:
         raise ValueError("Missing required columns")
 
-    ratios = df["bytes_per_second"] / df["cells_per_second"]
-
     df = df.copy()
-    df["bytes_per_cell_estimate"] = ratios
-
+    df["benchmark_clean"] = (
+        df["benchmark"]
+        .str.replace("Vectorized", "", regex=False)
+        .str.replace("WorstRem", "", regex=False)
+    )
+    df["bytes_per_cell_estimate"] = (
+        df["bytes_per_second"] / df["cells_per_second"]
+    )
     summary = (
-        df.groupby(["benchmark", "hardware"])["bytes_per_cell_estimate"]
+        df.groupby(["benchmark_clean"])["bytes_per_cell_estimate"]
         .agg(["mean", "std", "min", "max"])
         .reset_index()
     )
+    if out_csv is not None:
+        out_csv = Path(out_csv)
+        out_csv.parent.mkdir(parents=True, exist_ok=True)
 
-    summary["rel_std"] = summary["std"] / summary["mean"]
-
-    print("\n=== Bytes-per-cell consistency check ===\n")
-    print(summary)
-
-    # flag suspicious cases
-    bad = summary[summary["rel_std"] > 0.05]
-
-    if not bad.empty:
-        print("\n⚠️ WARNING: unstable bytes/cell detected:")
-        print(bad)
+        summary.round(3).to_csv(out_csv, index=False)
 
     return summary
 
@@ -182,7 +181,7 @@ def _plot_series(ax, df_series, color, label, y_key, linestyle="-"):
     # FILTER invalid values (keep your fix)
     # ----------------------------
     df_series = df_series[df_series[y_key].notna()]
-    df_series = df_series[df_series[y_key] > 0]
+    # df_series = df_series[df_series[y_key] > 0]
 
     if df_series.empty:
         return
@@ -484,10 +483,143 @@ def get_hw(path):
     return "unknown"
 
 
-# =========================================================
-# SPEEDUP PLOT
-# =========================================================
+def hw_label(hw, mode):
+    base = HW_LABELS.get(hw, hw)
+    if mode is None:
+        return ""
+
+    if mode == "scalar":
+        return f"{base} | scalar"
+
+    w = SIMD_WIDTH.get(hw)
+    if w is None:
+        return f"{base} | vector"
+
+    return f"{base} | vector (W={w})"
+
+def plot_hw_scalar_vector(res_dir, out_dir, title=""):
+
+    res_dir = Path(res_dir)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    files = list(res_dir.glob("*.json"))
+    if not files:
+        raise FileNotFoundError(f"No JSON files in {res_dir}")
+
+    # ----------------------------
+    # load
+    # ----------------------------
+    data = []
+    for f in files:
+        df, _ = load_one(str(f))
+        df["hardware"] = get_hw(f)
+        data.append(df)
+
+    df = pd.concat(data, ignore_index=True)
+    validate_bytes_cells(df, "throughput_metric.csv")
+
+    bases = {b.replace("Vectorized", "") for b in df["benchmark"].unique()}
+
+    for base in bases:
+        if base == "EulerSimulation":
+            continue
+
+        fig, ax_cells = plt.subplots(figsize=(8, 5))
+        ax_bytes = ax_cells.twinx()
+
+        for hw in df["hardware"].unique():
+
+            d = df[df["hardware"] == hw]
+
+            scalar = d[d["benchmark"] == base].sort_values("size")
+            vector = d[d["benchmark"] == base + "Vectorized"].sort_values("size")
+
+            if scalar.empty or vector.empty:
+                continue
+
+            color = HW_COLORS.get(hw, "black")
+
+            # ----------------------------
+            # cells/sec (left axis)
+            # ----------------------------
+            _plot_series(
+                ax_cells,
+                scalar,
+                color,
+                hw_label(hw, "scalar"),
+                "cells_per_second",
+            )
+
+            _plot_series(
+                ax_cells,
+                vector,
+                color,
+                hw_label(hw, "vector"),
+                "cells_per_second",
+            )
+
+            # enforce linestyle difference
+            ax_cells.lines[-2].set_linestyle("-")   # scalar
+            ax_cells.lines[-1].set_linestyle("--")  # vector
+
+            # ----------------------------
+            # bytes/sec (right axis) - no legend duplication
+            # ----------------------------
+            _plot_series(
+                ax_bytes,
+                scalar,
+                color,
+                "_nolegend_",
+                "bytes_per_second",
+            )
+
+            _plot_series(
+                ax_bytes,
+                vector,
+                color,
+                "_nolegend_",
+                "bytes_per_second",
+            )
+
+            ax_bytes.lines[-2].set_linestyle("-")
+            ax_bytes.lines[-1].set_linestyle("--")
+
+        # ----------------------------
+        # formatting
+        # ----------------------------
+        ax_cells.set_yscale("log")
+        ax_bytes.set_yscale("log")
+
+        ax_cells.set_xlabel("n (cube width in cells)")
+        ax_cells.set_ylabel("cells per second")
+        ax_bytes.set_ylabel("bytes per second")
+
+        ax_cells.set_title(f"{title} {base}".strip())
+        ax_cells.grid(True)
+
+        # ----------------------------
+        # legend (ONLY cells axis)
+        # ----------------------------
+        handles, labels = ax_cells.get_legend_handles_labels()
+
+        seen = set()
+        new_h, new_l = [], []
+
+        for h, l in zip(handles, labels):
+            if l not in seen:
+                new_h.append(h)
+                new_l.append(l)
+                seen.add(l)
+
+        ax_cells.legend(new_h, new_l, fontsize=8)
+
+        plt.tight_layout()
+        plt.savefig(out_dir / f"{base}_hw_compare.png", dpi=200)
+        plt.close()
+
 def plot_hw_speedup(res_dir, out_dir):
+
     res_dir = Path(res_dir)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -504,6 +636,7 @@ def plot_hw_speedup(res_dir, out_dir):
         data.append(df)
 
     df = pd.concat(data, ignore_index=True)
+
     bases = {b.replace("Vectorized", "") for b in df["benchmark"].unique()}
 
     for base in bases:
@@ -536,44 +669,38 @@ def plot_hw_speedup(res_dir, out_dir):
             else:
                 speedup = merged[f"{metric}_scalar"] / merged[f"{metric}_vector"]
 
+            label = hw_label(hw, "vector")
+
             ax.plot(
                 merged["size"],
                 speedup,
                 color=HW_COLORS.get(hw, "black"),
-                label=(HW_LABELS.get(hw, hw) or "") + f" {SIMD_WIDTH[hw]}",
+                label=label,
                 marker="o",
-                alpha=0.9,
+                markersize=3,   # ← controls point size
+                alpha=0.7,
             )
+            
 
-            # ----------------------------
-            # SIMD upper bound (CPU only)
-            # ----------------------------
-            if hw in SIMD_WIDTH:
-                ax.axhline(
-                    SIMD_WIDTH[hw],
-                    linestyle=":",
-                    color=HW_COLORS.get(hw, "black"),
-                    alpha=0.6,
-                    label=f"{HW_LABELS[hw]} SIMD bound ({SIMD_WIDTH[hw]})",
-                )
 
         ax.axhline(1.0, color="black", linestyle="--", linewidth=1)
 
         ax.set_title(f"{base} Speedup (Vectorized vs Scalar)")
         ax.set_xlabel("n (cube width in cells)")
         ax.set_ylabel("Speedup")
-
         ax.grid(True, which="both", linestyle="--", alpha=0.5)
 
-        # deduplicate legend
+        
         handles, labels = ax.get_legend_handles_labels()
-        seen = set()
+
         new_h, new_l = [], []
+
         for h, l in zip(handles, labels):
-            if l not in seen:
+
+
+            if l not in new_l:
                 new_h.append(h)
                 new_l.append(l)
-                seen.add(l)
 
         ax.legend(new_h, new_l, fontsize=8)
 
@@ -581,147 +708,8 @@ def plot_hw_speedup(res_dir, out_dir):
         plt.savefig(out_dir / f"{base}_speedup.png", dpi=200)
         plt.close()
 
-
-# =========================================================
-# SCALAR VS VECTOR PLOT
-# =========================================================
-def plot_hw_scalar_vector(res_dir, out_dir, title=""):
-
-    res_dir = Path(res_dir)
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    files = list(res_dir.glob("*.json"))
-    if not files:
-        raise FileNotFoundError(f"No JSON files in {res_dir}")
-
-    # ----------------------------
-    # load
-    # ----------------------------
-    data = []
-    for f in files:
-        df, _ = load_one(str(f))
-        hw = get_hw(f)
-        df["hardware"] = hw
-        data.append(df)
-
-    df = pd.concat(data, ignore_index=True)
-
-    validate_bytes_cells_consistency(df)
-    bases = {b.replace("Vectorized", "") for b in df["benchmark"].unique()}
-
-    # ----------------------------
-    # helper: hide legend entries
-    # ----------------------------
-    def _no_legend(label):
-        return "_nolegend_" if label is not None else None
-
-    for base in bases:
-        if base == "EulerSimulation":
-            continue
-
-        fig, ax_cells = plt.subplots(figsize=(8, 5))
-        ax_bytes = ax_cells.twinx()
-
-        for hw in df["hardware"].unique():
-
-            d = df[df["hardware"] == hw]
-
-            scalar = d[d["benchmark"] == base].sort_values("size")
-            vector = d[d["benchmark"] == base + "Vectorized"].sort_values("size")
-
-            if scalar.empty or vector.empty:
-                continue
-
-            color = HW_COLORS.get(hw, "black")
-            label_hw = HW_LABELS.get(hw, hw)
-
-            # ----------------------------
-            # cells/sec (left axis)
-            # ----------------------------
-            _plot_series(
-                ax_cells,
-                scalar,
-                color,
-                f"{label_hw} | scalar",
-                "cells_per_second",
-            )
-
-            label_vectorized =f"{label_hw} | vector:"
-            if  SIMD_WIDTH.get(hw):
-                label_vectorized +=  f"(W={SIMD_WIDTH[hw]})"
-            else:
-                label_vectorized +=  f"(W=1)"
-
-            _plot_series(
-                ax_cells,
-                vector,
-                color,
-                label_vectorized,
-                "cells_per_second",
-            )
-
-            # force linestyle difference via re-plot (since your helper doesn't support it cleanly)
-            ax_cells.lines[-1].set_linestyle("--")  # vector line fix
-
-            # ----------------------------
-            # bytes/sec (right axis)
-            # ----------------------------
-            _plot_series(
-                ax_bytes,
-                scalar,
-                color,
-                _no_legend(f"{label_hw} | scalar"),
-                "bytes_per_second",
-            )
-
-            _plot_series(
-                ax_bytes,
-                vector,
-                color,
-                _no_legend(f"{label_hw} | vector"),
-                "bytes_per_second",
-            )
-
-            ax_bytes.lines[-1].set_linestyle("--")  # vector line fix
-
-        # ----------------------------
-        # formatting
-        # ----------------------------
-        ax_cells.set_yscale("log")
-        ax_bytes.set_yscale("log")
-
-        ax_cells.set_xlabel("n (cube width in cells)")
-        ax_cells.set_ylabel("cells per second")
-        ax_bytes.set_ylabel("bytes per second")
-
-        ax_cells.set_title(f"{title} {base}".strip())
-        ax_cells.grid(True)
-
-        # ----------------------------
-        # legend (ONLY from ax_cells)
-        # ----------------------------
-        handles, labels = ax_cells.get_legend_handles_labels()
-
-        seen = set()
-        new_h, new_l = [], []
-
-        for h, l in zip(handles, labels):
-            if l == "_nolegend_":
-                continue
-            if l not in seen:
-                new_h.append(h)
-                new_l.append(l)
-                seen.add(l)
-
-        ax_cells.legend(new_h, new_l, fontsize=8)
-
-        plt.tight_layout()
-        plt.savefig(out_dir / f"{base}_hw_compare.png", dpi=200)
-        plt.close()
-
-plot_hw_scalar_vector("./results", "./results/new/")
-# plot_hw_speedup("./results", "./results/new/")
+# plot_hw_scalar_vector("./results", "./results/new/")
+plot_hw_speedup("./results", "./results/new/")
 # FILES = {
 #     "skx_new": latest_result("."),
 # }
