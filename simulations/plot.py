@@ -197,25 +197,25 @@ def _plot_series(ax, df_series, color, label, y_key, linestyle="-"):
         alpha=0.5,
     )
 
-    ax.scatter(
-        aligned["size"],
-        aligned[y_key],
-        marker="o",
-        color=color,
-        zorder=5,
-        alpha=0.5,
-        s=8,   # 👈 fix
-    )
+    # ax.scatter(
+    #     aligned["size"],
+    #     aligned[y_key],
+    #     marker="o",
+    #     color=color,
+    #     zorder=5,
+    #     alpha=0.5,
+    #     s=8,   # 👈 fix
+    # )
 
-    ax.scatter(
-        unaligned["size"],
-        unaligned[y_key],
-        marker="x",
-        color=color,
-        zorder=5,
-        alpha=0.5,
-        s=8,   # already correct, just match
-    )
+    # ax.scatter(
+    #     unaligned["size"],
+    #     unaligned[y_key],
+    #     marker="x",
+    #     color=color,
+    #     zorder=5,
+    #     alpha=0.5,
+    #     s=8,   # already correct, just match
+    # )
 
 
 
@@ -491,11 +491,8 @@ def hw_label(hw, mode):
     if mode == "scalar":
         return f"{base} | scalar"
 
-    w = SIMD_WIDTH.get(hw)
-    if w is None:
-        return f"{base} | vector"
-
-    return f"{base} | vector (W={w})"
+    w = f"(W={SIMD_WIDTH.get(hw) or 'N/A'})"
+    return f"{base} | vector {w}"
 
 def plot_hw_scalar_vector(res_dir, out_dir, title=""):
 
@@ -618,6 +615,14 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
         plt.savefig(out_dir / f"{base}_hw_compare.png", dpi=200)
         plt.close()
 
+def hw_label_speedup(hw):
+    base = HW_LABELS.get(hw, hw)
+
+    w = f"(W={SIMD_WIDTH.get(hw) or 'N/A'})"
+    return f"{base} | {w}"
+
+   
+
 def plot_hw_speedup(res_dir, out_dir):
 
     res_dir = Path(res_dir)
@@ -669,7 +674,7 @@ def plot_hw_speedup(res_dir, out_dir):
             else:
                 speedup = merged[f"{metric}_scalar"] / merged[f"{metric}_vector"]
 
-            label = hw_label(hw, "vector")
+            label = hw_label_speedup(hw)
 
             ax.plot(
                 merged["size"],
@@ -708,7 +713,7 @@ def plot_hw_speedup(res_dir, out_dir):
         plt.savefig(out_dir / f"{base}_speedup.png", dpi=200)
         plt.close()
 
-# plot_hw_scalar_vector("./results", "./results/new/")
+plot_hw_scalar_vector("./results", "./results/new/")
 plot_hw_speedup("./results", "./results/new/")
 # FILES = {
 #     "skx_new": latest_result("."),
