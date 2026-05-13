@@ -31,6 +31,7 @@ RES_DIR = "results/ruche/skx/"
 import numpy as np
 import pandas as pd
 
+
 def validate_bytes_cells(df, out_csv=None):
     """
     Checks whether bytes_per_second and cells_per_second
@@ -48,14 +49,8 @@ def validate_bytes_cells(df, out_csv=None):
         .str.replace("Vectorized", "", regex=False)
         .str.replace("WorstRem", "", regex=False)
     )
-    df["bytes_per_cell_estimate"] = (
-        df["bytes_per_second"] / df["cells_per_second"]
-    )
-    summary = (
-        df.groupby(["benchmark"])["bytes_per_cell_estimate"]
-        .agg([ "min", "max"])
-        .reset_index()
-    )
+    df["bytes_per_cell_estimate"] = df["bytes_per_second"] / df["cells_per_second"]
+    summary = df.groupby(["benchmark"])["bytes_per_cell_estimate"].agg(["min", "max"]).reset_index()
     if out_csv is not None:
         out_csv = Path(out_csv)
         out_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -63,6 +58,7 @@ def validate_bytes_cells(df, out_csv=None):
         summary.round(3).to_csv(out_csv, index=False)
 
     return summary
+
 
 def latest_result(res_dir=RES_DIR, pattern="*.json"):
     """Find and return the most recently modified benchmark JSON file.
@@ -174,6 +170,7 @@ def _draw_cache_lines(ax, caches):
             label=f"L{level} ({size_bytes // 1024} KB) → n≈{n_cache:.0f}",
         )
 
+
 def _plot_series(ax, df_series, color, label, y_key, linestyle="-"):
     """Plot a benchmark series with aligned and unaligned data points."""
 
@@ -204,10 +201,8 @@ def _plot_series(ax, df_series, color, label, y_key, linestyle="-"):
         color=color,
         zorder=5,
         alpha=0.5,
-        s=8,   # 👈 fix
+        s=8,  # 👈 fix
     )
-
-
 
 
 def plot_time_and_speedup(ax_right, ax_speedup, s, v, caches):
@@ -427,12 +422,9 @@ def compare_benchmarks(path_a, path_b, out_csv, cols=None):
 # %%
 
 
-
-
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
-
 
 # ----------------------------
 # shared helpers
@@ -465,7 +457,6 @@ HW_LABELS = {
 # CPU SIMD "upper bounds"
 
 
-
 def get_hw(path):
     name = Path(path).name.lower()
     for tag in ["skx", "genoa", "mi300", "gh200", "a100"]:
@@ -492,7 +483,6 @@ def hw_label_speedup(hw):
     w = f"(W={SIMD_WIDTH.get(hw) or 'N/A'})"
     return f"{base} | {w}"
 
-   
 
 def plot_hw_speedup(res_dir, out_dir):
 
@@ -553,11 +543,9 @@ def plot_hw_speedup(res_dir, out_dir):
                 color=HW_COLORS.get(hw, "black"),
                 label=label,
                 marker="o",
-                markersize=3,   # ← controls point size
+                markersize=3,  # ← controls point size
                 alpha=0.7,
             )
-            
-
 
         ax.axhline(1.0, color="black", linestyle="--", linewidth=1)
 
@@ -566,13 +554,11 @@ def plot_hw_speedup(res_dir, out_dir):
         ax.set_ylabel("Speedup")
         ax.grid(True, which="both", linestyle="--", alpha=0.5)
 
-        
         handles, labels = ax.get_legend_handles_labels()
 
         new_h, new_l = [], []
 
         for h, l in zip(handles, labels):
-
 
             if l not in new_l:
                 new_h.append(h)
@@ -583,6 +569,7 @@ def plot_hw_speedup(res_dir, out_dir):
         plt.tight_layout()
         plt.savefig(out_dir / f"{base}_speedup.png", dpi=200)
         plt.close()
+
 
 def plot_hw_scalar_vector(res_dir, out_dir, title=""):
 
@@ -609,17 +596,15 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
     bases = {b.replace("Vectorized", "") for b in df["benchmark"].unique()}
 
     for base in bases:
-        if base == "EulerSimulation":
-            continue
 
         fig, ax_cells = plt.subplots(figsize=(8, 5))
-        ax_bytes = ax_cells.twinx()
+
+        # EulerSimulation: no bytes axis
+        is_euler = base == "EulerSimulation"
+
+        ax_bytes = ax_cells.twinx() if not is_euler else None
 
         hardware_handles = {}
-
-        # proxies for second legend (scalar/vector meaning)
-        scalar_proxy = None
-        vector_proxy = None
 
         for hw in df["hardware"].unique():
 
@@ -634,59 +619,35 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
             color = HW_COLORS.get(hw, "black")
 
             # ----------------------------
-            # cells/sec (left axis)
+            # LEFT AXIS (always cells/s now)
             # ----------------------------
-            _plot_series(
-                ax_cells,
-                scalar,
-                color,
-                "_nolegend_",
-                "cells_per_second",
-            )
-            _plot_series(
-                ax_cells,
-                vector,
-                color,
-                "_nolegend_",
-                "cells_per_second",
-            )
+            _plot_series(ax_cells, scalar, color, "_nolegend_", "cells_per_second")
+            _plot_series(ax_cells, vector, color, "_nolegend_", "cells_per_second")
 
-            # enforce linestyle difference
             ax_cells.lines[-2].set_linestyle("-")
             ax_cells.lines[-1].set_linestyle("--")
 
-            # store ONE representative handle per hardware (use scalar line)
+            # store one representative handle per HW
             if hw not in hardware_handles:
                 hardware_handles[hw] = ax_cells.lines[-2]
 
             # ----------------------------
-            # bytes/sec (right axis)
+            # RIGHT AXIS (skip for Euler)
             # ----------------------------
-            _plot_series(
-                ax_bytes,
-                scalar,
-                color,
-                "_nolegend_",
-                "bytes_per_second",
-            )
-            _plot_series(
-                ax_bytes,
-                vector,
-                color,
-                "_nolegend_",
-                "bytes_per_second",
-            )
+            if not is_euler and ax_bytes:
+                _plot_series(ax_bytes, scalar, color, "_nolegend_", "bytes_per_second")
+                _plot_series(ax_bytes, vector, color, "_nolegend_", "bytes_per_second")
 
-            ax_bytes.lines[-2].set_linestyle("-")
-            ax_bytes.lines[-1].set_linestyle("--")
+                ax_bytes.lines[-2].set_linestyle("-")
+                ax_bytes.lines[-1].set_linestyle("--")
 
         # ----------------------------
-        # LEGEND 1: hardware only
+        # LEGEND 1: hardware
         # ----------------------------
         legend1 = ax_cells.legend(
             hardware_handles.values(),
             [hw_label_speedup(hw) for hw in hardware_handles.keys()],
-            # [HW_LABELS.get(hw, hw) for hw in hardware_handles.keys()],
+            bbox_to_anchor=(0.7, 0.3),
             loc="best",
             fontsize=8,
             title="Hardware",
@@ -694,15 +655,16 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
         ax_cells.add_artist(legend1)
 
         # ----------------------------
-        # LEGEND 2: scalar / vector meaning
+        # LEGEND 2: scalar/vector mode
         # ----------------------------
-        scalar_proxy, = ax_cells.plot([], [], "-", color="black")
-        vector_proxy, = ax_cells.plot([], [], "--", color="black")
+        (scalar_proxy,) = ax_cells.plot([], [], "-", color="black")
+        (vector_proxy,) = ax_cells.plot([], [], "--", color="black")
 
         ax_cells.legend(
             [scalar_proxy, vector_proxy],
             ["scalar", "vector"],
             loc="upper left",
+            bbox_to_anchor=(0.0, 1.0),
             fontsize=8,
             title="Mode",
         )
@@ -711,12 +673,13 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
         # formatting
         # ----------------------------
         ax_cells.set_yscale("log")
-        ax_bytes.set_yscale("log")
+        ax_cells.set_ylabel("cells per second")
+
+        if not is_euler and ax_bytes:
+            ax_bytes.set_yscale("log")
+            ax_bytes.set_ylabel("bytes per second")
 
         ax_cells.set_xlabel("n (cube width in cells)")
-        ax_cells.set_ylabel("cells per second")
-        ax_bytes.set_ylabel("bytes per second")
-
         ax_cells.set_title(f"{title} {base}".strip())
         ax_cells.grid(True)
 
@@ -724,8 +687,9 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
         plt.savefig(out_dir / f"{base}_hw_compare.png", dpi=200)
         plt.close()
 
-plot_hw_scalar_vector("./results", "./results/plots/")
-plot_hw_speedup("./results", "./results/plots/")
+
+plot_hw_scalar_vector("./results", "./results/new/")
+plot_hw_speedup("./results", "./results/new/")
 # FILES = {
 #     "skx_new": latest_result("."),
 # }
@@ -738,4 +702,3 @@ plot_hw_speedup("./results", "./results/plots/")
 #     cols=COLS,
 # )
 #
-
