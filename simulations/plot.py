@@ -111,7 +111,7 @@ def load_one(path):
         rows.append(
             {
                 "benchmark": name.split("/")[0],
-                "size": int(name.split("/")[-1]),
+                "size": int(name.split("/")[-2]),
                 "cells_per_second": b.get("cells_per_second"),
                 "bytes_per_second": b.get("bytes_per_second"),
                 "real_time_ns": b.get("real_time"),
@@ -139,21 +139,39 @@ def _draw_cache_lines(ax, caches):
             label=f"L{level} ({size_bytes // 1024} KB) → n≈{n_cache:.0f}",
         )
 
+def _plot_series(ax, df_series, color, label, y_key, linestyle="-"):
+    """Plot a benchmark series with aligned and unaligned data points."""
 
-def _plot_series(ax, df_series, color, label, y_key):
-    """Plot a benchmark series with aligned and unaligned data points.
+    # ----------------------------
+    # FILTER invalid values (keep your fix)
+    # ----------------------------
+    df_series = df_series[df_series[y_key].notna()]
+    df_series = df_series[df_series[y_key] > 0]
 
-    Args:
-        ax: Matplotlib axis object to plot on.
-        df_series: DataFrame containing the series data.
-        color: Color for the plot line and markers.
-        label: Label for the series.
-        y_key: Column name to plot on the y-axis.
-    """
+    if df_series.empty:
+        return
+
     aligned = df_series[df_series["size"] % 8 == 0]
     unaligned = df_series[df_series["size"] % 8 != 0]
-    ax.plot(df_series["size"], df_series[y_key], "-", color=color, label=label, alpha=0.5)
-    ax.scatter(aligned["size"], aligned[y_key], marker="o", color=color, zorder=5, alpha=0.5)
+    ax.plot(
+        df_series["size"],
+        df_series[y_key],
+        linestyle,
+        color=color,
+        label=label,
+        alpha=0.5,
+    )
+
+    ax.scatter(
+        aligned["size"],
+        aligned[y_key],
+        marker="o",
+        color=color,
+        zorder=5,
+        alpha=0.5,
+        s=8,   # 👈 fix
+    )
+
     ax.scatter(
         unaligned["size"],
         unaligned[y_key],
@@ -161,7 +179,9 @@ def _plot_series(ax, df_series, color, label, y_key):
         color=color,
         zorder=5,
         alpha=0.5,
+        s=8,   # already correct, just match
     )
+
 
 
 def plot_time_and_speedup(ax_right, ax_speedup, s, v, caches):
@@ -381,14 +401,297 @@ def compare_benchmarks(path_a, path_b, out_csv, cols=None):
 # %%
 
 
-FILES = {
-    "skx_new": latest_result("."),
+
+
+from pathlib import Path
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+# ----------------------------
+# shared helpers
+# ----------------------------
+
+
+HW_COLORS = {
+    "skx": "C0",
+    "genoa": "C1",
+    "mi300": "C2",
+    "gh200": "C3",
+    "a100": "C4",
+    "unknown": "gray",
 }
-plot_scalar_vs_vector(FILES, OUT_DIR)
-COLS = ["benchmark", "size", "real_time_speedup"]
-compare_benchmarks(
-    FILES["skx_new"],
-    FILES["skx_new"],
-    "store.csv",
-    cols=COLS,
-)
+SIMD_WIDTH = {
+    "skx": 8,
+    "genoa": 8,
+    "gh200": 2,
+    # GPUs intentionally omitted
+}
+HW_LABELS = {
+    "skx": "Intel Xeon Gold ",
+    "genoa": "AMD Genoa",
+    "mi300": "MI300A (APU)",
+    "gh200": "GH200 ARM (CPU)",
+    "a100": "NVIDIA A100 (GPU)",
+    "unknown": "Unknown",
+}
+
+# CPU SIMD "upper bounds"
+
+
+
+def get_hw(path):
+    name = Path(path).name.lower()
+    for tag in ["skx", "genoa", "mi300", "gh200", "a100"]:
+        if tag in name:
+            return tag
+    return "unknown"
+
+
+# =========================================================
+# SPEEDUP PLOT
+# =========================================================
+def plot_hw_speedup(res_dir, out_dir):
+    res_dir = Path(res_dir)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    files = list(res_dir.glob("*.json"))
+    if not files:
+        raise FileNotFoundError(f"No JSON files in {res_dir}")
+
+    # load
+    data = []
+    for f in files:
+        df, _ = load_one(str(f))
+        df["hardware"] = get_hw(f)
+        data.append(df)
+
+    df = pd.concat(data, ignore_index=True)
+    bases = {b.replace("Vectorized", "") for b in df["benchmark"].unique()}
+
+    for base in bases:
+
+        fig, ax = plt.subplots(figsize=(8, 5))
+        metric = "bytes_per_second" if base != "EulerSimulation" else "real_time_ns"
+
+        for hw in df["hardware"].unique():
+
+            d = df[df["hardware"] == hw]
+
+            scalar = d[d["benchmark"] == base].sort_values("size")
+            vector = d[d["benchmark"] == base + "Vectorized"].sort_values("size")
+
+            if scalar.empty or vector.empty:
+                continue
+
+            merged = pd.merge(
+                scalar[["size", metric]],
+                vector[["size", metric]],
+                on="size",
+                suffixes=("_scalar", "_vector"),
+            )
+
+            if merged.empty:
+                continue
+
+            if metric == "bytes_per_second":
+                speedup = merged[f"{metric}_vector"] / merged[f"{metric}_scalar"]
+            else:
+                speedup = merged[f"{metric}_scalar"] / merged[f"{metric}_vector"]
+
+            ax.plot(
+                merged["size"],
+                speedup,
+                color=HW_COLORS.get(hw, "black"),
+                label=(HW_LABELS.get(hw, hw) or "") + f" {SIMD_WIDTH[hw]}",
+                marker="o",
+                alpha=0.9,
+            )
+
+            # ----------------------------
+            # SIMD upper bound (CPU only)
+            # ----------------------------
+            if hw in SIMD_WIDTH:
+                ax.axhline(
+                    SIMD_WIDTH[hw],
+                    linestyle=":",
+                    color=HW_COLORS.get(hw, "black"),
+                    alpha=0.6,
+                    label=f"{HW_LABELS[hw]} SIMD bound ({SIMD_WIDTH[hw]})",
+                )
+
+        ax.axhline(1.0, color="black", linestyle="--", linewidth=1)
+
+        ax.set_title(f"{base} Speedup (Vectorized vs Scalar)")
+        ax.set_xlabel("n (cube width in cells)")
+        ax.set_ylabel("Speedup")
+
+        ax.grid(True, which="both", linestyle="--", alpha=0.5)
+
+        # deduplicate legend
+        handles, labels = ax.get_legend_handles_labels()
+        seen = set()
+        new_h, new_l = [], []
+        for h, l in zip(handles, labels):
+            if l not in seen:
+                new_h.append(h)
+                new_l.append(l)
+                seen.add(l)
+
+        ax.legend(new_h, new_l, fontsize=8)
+
+        plt.tight_layout()
+        plt.savefig(out_dir / f"{base}_speedup.png", dpi=200)
+        plt.close()
+
+
+# =========================================================
+# SCALAR VS VECTOR PLOT
+# =========================================================
+def plot_hw_scalar_vector(res_dir, out_dir, title=""):
+
+    res_dir = Path(res_dir)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    files = list(res_dir.glob("*.json"))
+    if not files:
+        raise FileNotFoundError(f"No JSON files in {res_dir}")
+
+    # ----------------------------
+    # load
+    # ----------------------------
+    data = []
+    for f in files:
+        df, _ = load_one(str(f))
+        hw = get_hw(f)
+        df["hardware"] = hw
+        data.append(df)
+
+    df = pd.concat(data, ignore_index=True)
+
+    bases = {b.replace("Vectorized", "") for b in df["benchmark"].unique()}
+
+    # ----------------------------
+    # helper: hide legend entries
+    # ----------------------------
+    def _no_legend(label):
+        return "_nolegend_" if label is not None else None
+
+    for base in bases:
+        if base == "EulerSimulation":
+            continue
+
+        fig, ax_cells = plt.subplots(figsize=(8, 5))
+        ax_bytes = ax_cells.twinx()
+
+        for hw in df["hardware"].unique():
+
+            d = df[df["hardware"] == hw]
+
+            scalar = d[d["benchmark"] == base].sort_values("size")
+            vector = d[d["benchmark"] == base + "Vectorized"].sort_values("size")
+
+            if scalar.empty or vector.empty:
+                continue
+
+            color = HW_COLORS.get(hw, "black")
+            label_hw = HW_LABELS.get(hw, hw)
+
+            # ----------------------------
+            # cells/sec (left axis)
+            # ----------------------------
+            _plot_series(
+                ax_cells,
+                scalar,
+                color,
+                f"{label_hw} | scalar",
+                "cells_per_second",
+            )
+
+            label_vectorized =f"{label_hw} | vector:"
+            if  SIMD_WIDTH.get(hw):
+                label_vectorized +=  f"(W={SIMD_WIDTH[hw]})"
+            else:
+                label_vectorized +=  f"(W=1)"
+
+            _plot_series(
+                ax_cells,
+                vector,
+                color,
+                label_vectorized,
+                "cells_per_second",
+            )
+
+            # force linestyle difference via re-plot (since your helper doesn't support it cleanly)
+            ax_cells.lines[-1].set_linestyle("--")  # vector line fix
+
+            # ----------------------------
+            # bytes/sec (right axis)
+            # ----------------------------
+            _plot_series(
+                ax_bytes,
+                scalar,
+                color,
+                _no_legend(f"{label_hw} | scalar"),
+                "bytes_per_second",
+            )
+
+            _plot_series(
+                ax_bytes,
+                vector,
+                color,
+                _no_legend(f"{label_hw} | vector"),
+                "bytes_per_second",
+            )
+
+            ax_bytes.lines[-1].set_linestyle("--")  # vector line fix
+
+        # ----------------------------
+        # formatting
+        # ----------------------------
+        ax_cells.set_yscale("log")
+        ax_bytes.set_yscale("log")
+
+        ax_cells.set_xlabel("n (cube width in cells)")
+        ax_cells.set_ylabel("cells per second")
+        ax_bytes.set_ylabel("bytes per second")
+
+        ax_cells.set_title(f"{title} {base}".strip())
+        ax_cells.grid(True)
+
+        # ----------------------------
+        # legend (ONLY from ax_cells)
+        # ----------------------------
+        handles, labels = ax_cells.get_legend_handles_labels()
+
+        seen = set()
+        new_h, new_l = [], []
+
+        for h, l in zip(handles, labels):
+            if l == "_nolegend_":
+                continue
+            if l not in seen:
+                new_h.append(h)
+                new_l.append(l)
+                seen.add(l)
+
+        ax_cells.legend(new_h, new_l, fontsize=8)
+
+        plt.tight_layout()
+        plt.savefig(out_dir / f"{base}_hw_compare.png", dpi=200)
+        plt.close()
+plot_hw_scalar_vector("./results", "./results/new/")
+# plot_hw_speedup("./results", "./results/new/")
+# FILES = {
+#     "skx_new": latest_result("."),
+# }
+# plot_scalar_vs_vector(FILES, OUT_DIR)
+# COLS = ["benchmark", "size", "real_time_speedup"]
+# compare_benchmarks(
+#     FILES["skx_new"],
+#     FILES["skx_new"],
+#     "store.csv",
+#     cols=COLS,
+# )
