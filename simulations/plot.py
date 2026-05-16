@@ -6,185 +6,51 @@ This script has two main functionalities:
     - creating a csv file comparing two different benchmarks
 """
 
-import glob
 import json
-import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
-KERNEL_BENCHMARKS = [
-    "Godunov",
-    "TimeStep",
-    "ConsToPrim",
-    "PrimToConsVectorized",
-    "PrimToCons",
-]
-ALL_BENCHMARKS = KERNEL_BENCHMARKS
-ALL_BENCHMARKS.append("EulerSimulation")
-
-
-OUT_DIR = "results/plots"
-RES_DIR = "results/ruche/skx/"
-
-import numpy as np
-import pandas as pd
-
-
-def validate_bytes_cells(df, out_csv=None):
-    """
-    Checks whether bytes_per_second and cells_per_second
-    are proportional with a stable bytes-per-cell factor.
-
-    Also saves per-benchmark/hardware ratios if out_csv is provided.
-    """
-
-    if "bytes_per_second" not in df.columns or "cells_per_second" not in df.columns:
-        raise ValueError("Missing required columns")
-
-    df = df.copy()
-    df["benchmark"] = (
-        df["benchmark"]
-        .str.replace("Vectorized", "", regex=False)
-        .str.replace("WorstRem", "", regex=False)
-    )
-    df["bytes_per_cell_estimate"] = df["bytes_per_second"] / df["cells_per_second"]
-    summary = df.groupby(["benchmark"])["bytes_per_cell_estimate"].agg(["min", "max"]).reset_index()
-    if out_csv is not None:
-        out_csv = Path(out_csv)
-        out_csv.parent.mkdir(parents=True, exist_ok=True)
-
-        summary.round(3).to_csv(out_csv, index=False)
-
-    return summary
-
-
-def latest_result(res_dir=RES_DIR, pattern="*.json"):
-    """Find and return the most recently modified benchmark JSON file.
-
-    Args:
-        res_dir: Directory to search for benchmark files (default: RES_DIR).
-        pattern: Glob pattern to match files (default: "*.json").
-
-    Returns:
-        Path to the most recently modified file matching the pattern.
-
-    Raises:
-        FileNotFoundError: If no files matching the pattern are found.
-    """
-    files = glob.glob(os.path.join(res_dir, pattern))
-    print(files)
-    if not files:
-        raise FileNotFoundError(f"No files matching {pattern} in {res_dir}")
-    return max(files, key=os.path.getmtime)
-
-
-def result_by_job_id(job_id, res_dir=RES_DIR):
-    """Retrieve a benchmark result file by job ID.
-
-    Args:
-        job_id: The job ID to search for (used as filename prefix).
-        res_dir: Directory to search for benchmark files (default: RES_DIR).
-
-    Returns:
-        Path to the result file for the given job ID.
-
-    Raises:
-        FileNotFoundError: If no result file is found for the given job ID.
-    """
-    prefix = f"[{job_id}]"
-    files = os.listdir(res_dir)
-    for f in files:
-        if f.startswith(prefix):
-            return os.path.join(res_dir, f)
-    raise FileNotFoundError(f"No result found for job {job_id} in {res_dir}")
-
-
-def extract_label(path):
-    """Extract a timestamp label from a benchmark result file path.
-
-    Args:
-        path: Path to the benchmark result file.
-
-    Returns:
-        A timestamp string extracted from the filename, with a trailing underscore.
-    """
-    name = Path(path).name
-    timestamp = name.split("[")[1].split("]")[0]
-    return timestamp + "_"
-
-
 # %%
-
-BYTES_PER_CELL = 10 * 8
-CACHE_COLORS = {1: "green", 2: "orange", 3: "red"}
 
 
 def load_one(path):
-    """Load and parse a Google Benchmark JSON file.
+    """Load and parse a Google Benchmark JSON file."""
 
-    Args:
-        path: Path to the JSON benchmark file.
-
-    Returns:
-        A tuple of (DataFrame, caches_dict) where:
-        - DataFrame contains benchmark data with columns: benchmark, size,
-          cells_per_second, bytes_per_second, real_time_ns
-        - caches_dict is a mapping of cache level to size in bytes
-    """
     with open(path, encoding="utf-8") as f:
         raw = json.load(f)
+
     caches = {c["level"]: c["size"] for c in raw["context"]["caches"] if c["type"] == "Unified"}
+
     rows = []
+
     for b in raw["benchmarks"]:
         name = b["name"]
-        rows.append(
-            {
-                "benchmark": name.split("/")[0],
-                "size": int(name.split("/")[-2]),
-                "cells_per_second": b.get("cells_per_second"),
-                "bytes_per_second": b.get("bytes_per_second"),
-                "real_time_ns": b.get("real_time"),
-            }
-        )
-    return pd.DataFrame(rows), caches
 
+        row = {
+            "benchmark": name.split("/")[0],
+            "size": int(name.split("/")[-2]),
+            "cells_per_second": b.get("cells_per_second"),
+            "bytes_per_second": b.get("bytes_per_second"),
+            "real_time_ns": b.get("real_time"),
+        }
 
-def _draw_cache_lines(ax, caches):
-    """Draw vertical lines on a plot indicating cache level boundaries.
-       (Read directly from Google Benchmark => only relevant for cpu.
+        rows.append(row)
 
-    Args:
-        ax: Matplotlib axis object to draw on.
-        caches: Dictionary mapping cache level to size in bytes.
-    """
-    for level, size_bytes in sorted(caches.items()):
-        n_cache = (size_bytes / BYTES_PER_CELL) ** (1 / 3)
-        color = CACHE_COLORS.get(level, "gray")
-        ax.axvline(
-            n_cache,
-            linestyle="--",
-            color=color,
-            alpha=0.7,
-            label=f"L{level} ({size_bytes // 1024} KB) → n≈{n_cache:.0f}",
-        )
+    df = pd.DataFrame(rows)
+
+    return df, caches
 
 
 def _plot_series(ax, df_series, color, label, y_key, linestyle="-"):
     """Plot a benchmark series with aligned and unaligned data points."""
 
-    # ----------------------------
-    # FILTER invalid values (keep your fix)
-    # ----------------------------
     df_series = df_series[df_series[y_key].notna()]
-    # df_series = df_series[df_series[y_key] > 0]
 
     if df_series.empty:
         return
 
-    aligned = df_series[df_series["size"] % 8 == 0]
-    unaligned = df_series[df_series["size"] % 8 != 0]
     ax.plot(
         df_series["size"],
         df_series[y_key],
@@ -195,177 +61,14 @@ def _plot_series(ax, df_series, color, label, y_key, linestyle="-"):
     )
 
     ax.scatter(
-        aligned["size"],
-        aligned[y_key],
+        df_series["size"],
+        df_series[y_key],
         marker="o",
         color=color,
         zorder=5,
         alpha=0.5,
         s=8,  # 👈 fix
     )
-
-
-def plot_time_and_speedup(ax_right, ax_speedup, s, v, caches):
-    """Plot wall time and speedup comparison between scalar and vectorized implementations.
-
-    Args:
-        ax_right: Matplotlib axis for wall time plot.
-        ax_speedup: Secondary axis for speedup overlay.
-        s: DataFrame of scalar benchmark results.
-        v: DataFrame of vectorized benchmark results.
-        caches: Dictionary mapping cache level to size in bytes.
-    """
-    _plot_series(ax_right, s, "C0", "scalar ns", "real_time_ns")
-    _plot_series(ax_right, v, "C1", "vectorized ns", "real_time_ns")
-
-    merged = pd.merge(
-        s[["size", "real_time_ns"]],
-        v[["size", "real_time_ns"]],
-        on="size",
-        suffixes=("_s", "_v"),
-    ).dropna()
-
-    merged["speedup"] = merged["real_time_ns_s"] / merged["real_time_ns_v"]
-
-    ax_speedup.plot(
-        merged["size"],
-        merged["speedup"],
-        "-",
-        color="C2",
-        label="speedup (×)",
-        linewidth=1.5,
-    )
-    ax_speedup.scatter(
-        merged["size"],
-        merged["speedup"],
-        marker="D",
-        color="C2",
-        zorder=5,
-        s=25,
-    )
-    ax_speedup.axhline(1.0, linestyle=":", color="C2", alpha=0.5)
-
-    _draw_cache_lines(ax_right, caches)
-
-
-def plot_throughput(ax_left, ax_bytes, s, v, caches):
-    """Plot throughput comparison (cells/s and bytes/s) between scalar and vectorized.
-
-    Args:
-        ax_left: Matplotlib axis for cells per second plot.
-        ax_bytes: Secondary axis for bytes per second overlay.
-        s: DataFrame of scalar benchmark results.
-        v: DataFrame of vectorized benchmark results.
-        caches: Dictionary mapping cache level to size in bytes.
-    """
-    for df_series, color, label in [
-        (s, "C0", "scalar"),
-        (v, "C1", "vectorized"),
-    ]:
-        _plot_series(ax_left, df_series, color, f"{label} cells/s", "cells_per_second")
-        _plot_series(ax_bytes, df_series, color, f"{label} bytes/s", "bytes_per_second")
-
-    _draw_cache_lines(ax_left, caches)
-
-
-def plot_pair(benchmarks, caches, base_name, bm_label, out_dir):
-    """Create a two-panel figure comparing scalar vs vectorized performance metrics.
-
-    Args:
-        benchmarks: Pair of DataFrames of scalar and vectorized benchmark results.
-        caches: Dictionary mapping cache level to size in bytes.
-        base_name: Base name of the benchmark (without "Vectorized" suffix).
-        bm_label: Label for the benchmark (used in filename and title).
-        out_dir: Output directory path for saving the figure.
-    """
-    s, v = benchmarks
-    fig, (ax_left, ax_right) = plt.subplots(1, 2, figsize=(16, 5))
-
-    ax_bytes = ax_left.twinx()
-    ax_speedup = ax_right.twinx()
-
-    fig.suptitle(f"{base_name} — {bm_label}", fontsize=12)
-
-    plot_throughput(ax_left, ax_bytes, s, v, caches)
-    plot_time_and_speedup(ax_right, ax_speedup, s, v, caches)
-
-    ax_left.set_xlabel("n (cube width in cells)")
-    ax_right.set_xlabel("n (cube width in cells)")
-
-    ax_left.set_title("Throughput")
-    ax_right.set_title("Wall Time & Speedup")
-
-    plt.tight_layout()
-    plt.savefig(out_dir / f"{bm_label}_{base_name}.png", dpi=200)
-    plt.close()
-
-
-def get_scalar_vector(df, base_name):
-    """Extract scalar and vectorized benchmark data for a given base benchmark name.
-
-    Args:
-        df: DataFrame containing benchmark results.
-        base_name: Base name of the benchmark (without "Vectorized" suffix).
-
-    Returns:
-        A tuple of (scalar_df, vectorized_df) sorted by size.
-    """
-    s = df[df["benchmark"] == base_name].sort_values("size")
-    v = df[df["benchmark"] == base_name + "Vectorized"].sort_values("size")
-    return s, v
-
-
-def collect_all_benchmarks(files):
-    """Collect all unique benchmark names from a set of result files.
-
-    Args:
-        files: Dictionary mapping environment names to file paths.
-
-    Returns:
-        A set of unique benchmark names found across all files.
-    """
-    all_names = set()
-    for path in files.values():
-        df, _ = load_one(path)
-        all_names.update(df["benchmark"].unique())
-    return all_names
-
-
-def process_base_name(files, out_dir, base_name):
-    """Process and plot scalar vs vectorized comparisons for a single benchmark.
-
-    Args:
-        files: Dictionary mapping environment names to file paths.
-        out_dir: Output directory for saving plots.
-        base_name: Base name of the benchmark to process.
-    """
-    for environment, path in files.items():
-        df, caches = load_one(path)
-        bm_label = extract_label(path)
-
-        s, v = get_scalar_vector(df, base_name)
-        if s.empty or v.empty:
-            print(f"skipping {base_name} for {environment}")
-            continue
-
-        plot_pair((s, v), caches, base_name, bm_label, out_dir)
-
-
-def plot_scalar_vs_vector(files, out_dir):
-    """Generate scalar vs vectorized comparison plots for all benchmarks.
-
-    Args:
-        files: Dictionary mapping environment names to benchmark result file paths.
-        out_dir: Output directory for saving generated plots.
-    """
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    all_names = collect_all_benchmarks(files)
-    base_names = [b for b in all_names if b + "Vectorized" in all_names]
-
-    for base_name in base_names:
-        process_base_name(files, out_dir, base_name)
 
 
 def compare_benchmarks(path_a, path_b, out_csv, cols=None):
@@ -591,7 +294,6 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
         data.append(df)
 
     df = pd.concat(data, ignore_index=True)
-    validate_bytes_cells(df, "throughput_metric.csv")
 
     bases = {b.replace("Vectorized", "") for b in df["benchmark"].unique()}
 
@@ -619,10 +321,23 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
             color = HW_COLORS.get(hw, "black")
 
             # ----------------------------
-            # LEFT AXIS (always cells/s now)
+            # LEFT AXIS (cells/s only)
             # ----------------------------
-            _plot_series(ax_cells, scalar, color, "_nolegend_", "cells_per_second")
-            _plot_series(ax_cells, vector, color, "_nolegend_", "cells_per_second")
+            _plot_series(
+                ax_cells,
+                scalar,
+                color,
+                "_nolegend_",
+                "cells_per_second",
+            )
+
+            _plot_series(
+                ax_cells,
+                vector,
+                color,
+                "_nolegend_",
+                "cells_per_second",
+            )
 
             ax_cells.lines[-2].set_linestyle("-")
             ax_cells.lines[-1].set_linestyle("--")
@@ -632,11 +347,25 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
                 hardware_handles[hw] = ax_cells.lines[-2]
 
             # ----------------------------
-            # RIGHT AXIS (skip for Euler)
+            # RIGHT AXIS (bytes/s only for non-Euler)
             # ----------------------------
-            if not is_euler and ax_bytes:
-                _plot_series(ax_bytes, scalar, color, "_nolegend_", "bytes_per_second")
-                _plot_series(ax_bytes, vector, color, "_nolegend_", "bytes_per_second")
+            if not is_euler and ax_bytes is not None:
+
+                _plot_series(
+                    ax_bytes,
+                    scalar,
+                    color,
+                    "_nolegend_",
+                    "bytes_per_second",
+                )
+
+                _plot_series(
+                    ax_bytes,
+                    vector,
+                    color,
+                    "_nolegend_",
+                    "bytes_per_second",
+                )
 
                 ax_bytes.lines[-2].set_linestyle("-")
                 ax_bytes.lines[-1].set_linestyle("--")
@@ -652,6 +381,7 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
             fontsize=8,
             title="Hardware",
         )
+
         ax_cells.add_artist(legend1)
 
         # ----------------------------
@@ -675,7 +405,7 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
         ax_cells.set_yscale("log")
         ax_cells.set_ylabel("cells per second")
 
-        if not is_euler and ax_bytes:
+        if not is_euler and ax_bytes is not None:
             ax_bytes.set_yscale("log")
             ax_bytes.set_ylabel("bytes per second")
 
@@ -684,21 +414,14 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
         ax_cells.grid(True)
 
         plt.tight_layout()
-        plt.savefig(out_dir / f"{base}_hw_compare.png", dpi=200)
+
+        plt.savefig(
+            out_dir / f"{base}_hw_compare.png",
+            dpi=200,
+        )
+
         plt.close()
 
 
-plot_hw_scalar_vector("./results", "./results/new/")
-plot_hw_speedup("./results", "./results/new/")
-# FILES = {
-#     "skx_new": latest_result("."),
-# }
-# plot_scalar_vs_vector(FILES, OUT_DIR)
-# COLS = ["benchmark", "size", "real_time_speedup"]
-# compare_benchmarks(
-#     FILES["skx_new"],
-#     FILES["skx_new"],
-#     "store.csv",
-#     cols=COLS,
-# )
-#
+plot_hw_scalar_vector("./results", "./results/test_polts/")
+plot_hw_speedup("./results", "./results/test_polts/")
