@@ -5,8 +5,10 @@
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=32
-#SBATCH --time=00:08:00
+#SBATCH --time=00:15:00
 #SBATCH --exclusive
+#SBATCH --threads-per-core=1
+#SBATCH --hint=nomultithread
 #SBATCH --constraint=GENOA
 
 module purge
@@ -17,15 +19,15 @@ module load PrgEnv-cray
 set -x
 cd "${SLURM_SUBMIT_DIR}" || exit
 
-mkdir -p slurm_out results/scaling/
+mkdir -p slurm_out results/scaling/base-non_multi-CLOSE
 
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
-export OMP_PROC_BIND=spread
+export OMP_PROC_BIND=close
 export OMP_PLACES=cores
 
 export OMP_DISPLAY_AFFINITY=TRUE
 
-OUT=results/scaling/strong_genoa16-32.csv
+OUT=results/scaling/base-non_multi-CLOSE/strong-non_multi_CLOSE.csv
 
 echo "mode,nx,nt,threads,time_s,mcells_s" >$OUT
 

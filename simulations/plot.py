@@ -423,5 +423,40 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
         plt.close()
 
 
-plot_hw_scalar_vector("./results", "./results/test_polts/")
-plot_hw_speedup("./results", "./results/test_polts/")
+def plot_strong_scaling(path):
+    df = pd.read_csv(path)
+
+    threads = df["threads"].to_numpy()
+    time_s = df["time_s"].to_numpy()
+    mcells_s = df["mcells_s"].to_numpy()
+
+    speedup = time_s[0] / time_s
+    efficiency = 100 * speedup / threads
+
+    fig, ax1 = plt.subplots(figsize=(7, 5))
+
+    ax1.plot(threads, speedup, marker="o", label="Measured speedup")
+    ax1.plot(threads, threads, linestyle="--", label="Ideal speedup")
+
+    ax1.set_xscale("log", base=2)
+    ax1.set_xlabel("Threads")
+    ax1.set_ylabel("Speedup")
+    ax1.grid(True)
+
+    ax2 = ax1.twinx()
+
+    ax2.plot(threads, efficiency, marker="s", linestyle=":", label="Efficiency")
+    ax2.set_ylabel("Efficiency (%)")
+
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left")
+
+    p
+    plt.tight_layout()
+    plt.show()
+
+plot_strong_scaling("./results/scaling/base-non_multi/strong-non_multi_scaling.csv")
+# plot_hw_scalar_vector("./results", "./results/test_polts/")
+# plot_hw_speedup("./results", "./results/test_polts/")
