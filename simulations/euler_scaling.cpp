@@ -1,10 +1,10 @@
 #include <chrono>
 #include <cstddef>
-#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <ostream> // IWYU pragma: keep (std::flush)
 #include <string>
+#include <thread>
 
 #include <Kokkos_Core.hpp>
 #include <cons_to_prim.hpp>
