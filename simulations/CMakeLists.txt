@@ -1,5 +1,2 @@
 add_executable(euler_simulation euler_simulation.cpp save_npy.cpp)
-add_executable(euler_scaling euler_scaling.cpp)
-
-target_link_libraries(euler_scaling PRIVATE euler_operators euler_utils)
 target_link_libraries(euler_simulation PRIVATE euler_operators euler_utils)
