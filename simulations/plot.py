@@ -571,8 +571,8 @@ def compare_godunov_benchmarks(path, out_csv, base_name="Godunov", opti_name="Go
 
     return merged
 COLS=["benchmark_base", "size", "cells_per_second_speedup", "cells_per_second_base", "cells_per_second_opti"]
-# compare_godunov_benchmarks("./results/adastra/mi250x/4971156_mi250x__Godunov_GodunovOpti_GodunovVectorized__.json", "opti-base.csv",base_name="Godunov", opti_name='GodunovOpti' ,cols=COLS)
-# compare_godunov_benchmarks("./results/adastra/mi250x/4971156_mi250x__Godunov_GodunovOpti_GodunovVectorized__.json", "vec-opti.csv",base_name="GodunovVectorized", opti_name='GodunovOpti' ,cols=COLS)
+# compare_godunov_benchmarks("./results/adastra/mi250/4971156_mi250x__Godunov_GodunovOpti_GodunovVectorized__.json", "opti-base.csv",base_name="Godunov", opti_name='GodunovOpti' ,cols=COLS)
+# compare_godunov_benchmarks("./results/adastra/mi250/4971156_mi250x__Godunov_GodunovOpti_GodunovVectorized__.json", "vec-opti.csv",base_name="GodunovVectorized", opti_name='GodunovOpti' ,cols=COLS)
 
 # plot_scaling_dir("./results/scaling/genoa/")
 plot_hw_scalar_vector("./results", "./results/test_polts/")

@@ -26,8 +26,8 @@ int main(int argc, char** argv)
     using index_t = int;
     using real_t = double;
 
-    int const nx = 256;
-    int const nt = 1000;
+    int const nx = 128;
+    int const nt = 200;
     int const output_freq = 10;
     real_t const cfl_factor = 0.49;
     real_t const gamma = 1.4;
@@ -78,15 +78,15 @@ int main(int argc, char** argv)
 
         ++it;
 
-        // if (output_freq > 0 && it % output_freq 200i== 0) {
-        //     int const padding = 10;
-        //     std::stringstream ss;
-        //     ss << "test_vec_" << std::setfill('0') << std::setw(padding) << it << ".npy";
-        //     std::fstream file(ss.str(), std::fstream::out);
-        //     std::cout << "Saving " << ss.str() << ' ';
-        //     save_npy(file, prim_arrays.p);
-        //     std::cout << "done\n" << std::flush;
-        // }
+        if (output_freq > 0 && it % output_freq == 0) {
+            int const padding = 10;
+            std::stringstream ss;
+            ss << "test_vec_" << std::setfill('0') << std::setw(padding) << it << ".npy";
+            std::fstream file(ss.str(), std::fstream::out);
+            std::cout << "Saving " << ss.str() << ' ';
+            save_npy(file, prim_arrays.p);
+            std::cout << "done\n" << std::flush;
+        }
     }
     exec_space.fence();
     auto const end = std::chrono::steady_clock::now();
