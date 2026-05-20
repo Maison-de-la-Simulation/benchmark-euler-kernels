@@ -422,41 +422,84 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
 
         plt.close()
 
+import os 
+def plot_scaling_dir(path):
+    files = sorted([f for f in os.listdir(path) if f.endswith(".csv")])
 
-def plot_strong_scaling(path):
-    df = pd.read_csv(path)
+    strong_scalar = None
+    strong_vector = None
+    weak_scalar = None
+    weak_vector = None
 
-    threads = df["threads"].to_numpy()
-    time_s = df["time_s"].to_numpy()
-    mcells_s = df["mcells_s"].to_numpy()
+    for f in files:
+        full = os.path.join(path, f)
 
-    speedup = time_s[0] / time_s
-    efficiency = 100 * speedup / threads
+        if "strong" in f and "scalar" in f:
+            strong_scalar = pd.read_csv(full)
+        elif "strong" in f and "vector" in f:
+            strong_vector = pd.read_csv(full)
+        elif "weak" in f and "scalar" in f:
+            weak_scalar = pd.read_csv(full)
+        elif "weak" in f and "vector" in f:
+            weak_vector = pd.read_csv(full)
 
-    fig, ax1 = plt.subplots(figsize=(7, 5))
+    def plot_strong(df, ax, title):
+        t = df["threads"].to_numpy()
+        time = df["time_s"].to_numpy()
 
-    ax1.plot(threads, speedup, marker="o", label="Measured speedup")
-    ax1.plot(threads, threads, linestyle="--", label="Ideal speedup")
+        speedup = time[0] / time
+        eff = 100 * speedup / t
 
-    ax1.set_xscale("log", base=2)
-    ax1.set_xlabel("Threads")
-    ax1.set_ylabel("Speedup")
-    ax1.grid(True)
+        ax.plot(t, speedup, marker="o", label="speedup")
+        ax.plot(t, t, "--", label="ideal")
 
-    ax2 = ax1.twinx()
+        ax.set_xscale("log", base=2)
+        ax.set_xlabel("Threads")
+        ax.set_ylabel("Speedup")
+        ax.set_title(title)
+        ax.grid(True)
 
-    ax2.plot(threads, efficiency, marker="s", linestyle=":", label="Efficiency")
-    ax2.set_ylabel("Efficiency (%)")
+        ax2 = ax.twinx()
+        ax2.plot(t, eff, marker="s", linestyle=":", label="efficiency")
+        ax2.set_ylabel("Efficiency (%)")
 
-    lines1, labels1 = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
+        l1, lab1 = ax.get_legend_handles_labels()
+        l2, lab2 = ax2.get_legend_handles_labels()
+        ax.legend(l1 + l2, lab1 + lab2, loc="upper left")
 
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left")
+    def plot_weak(df, ax, title):
+        t = df["threads"].to_numpy()
+        time = df["time_s"].to_numpy()
 
-    p
+        norm = time / time[0]
+
+        ax.plot(t, norm, marker="o", label="runtime normalized")
+        ax.plot(t, t, "--", label="ideal weak scaling")
+
+        ax.set_xscale("log", base=2)
+        ax.set_xlabel("Threads")
+        ax.set_ylabel("T / T1")
+        ax.set_title(title)
+        ax.grid(True)
+        ax.legend()
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 9))
+
+    if strong_scalar is not None:
+        plot_strong(strong_scalar, axes[0, 0], "Strong Scalar")
+
+    if strong_vector is not None:
+        plot_strong(strong_vector, axes[0, 1], "Strong Vector")
+
+    if weak_scalar is not None:
+        plot_weak(weak_scalar, axes[1, 0], "Weak Scalar")
+
+    if weak_vector is not None:
+        plot_weak(weak_vector, axes[1, 1], "Weak Vector")
+
     plt.tight_layout()
     plt.show()
 
-plot_strong_scaling("./results/scaling/base-non_multi/strong-non_multi_scaling.csv")
+plot_scaling_dir("./results/scaling/genoa/")
 # plot_hw_scalar_vector("./results", "./results/test_polts/")
 # plot_hw_speedup("./results", "./results/test_polts/")

@@ -49,13 +49,13 @@ int main(int argc, char** argv)
     using index_t = int;
     using real_t = double;
 
-    std::string mode = "strong";
+    std::string mode = "strong"; // strong | weak
     std::string out_file = "results.csv";
+    std::string kernel = "scalar"; // scalar | vector
+    auto threads = omp_get_max_threads();
 
-    int nx_base = 256;
+    int nx = 256;
     int nt = 200;
-    int warmup = 2;
-    int repeats = 5;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -63,15 +63,13 @@ int main(int argc, char** argv)
         if (arg == "--mode") {
             mode = argv[++i];
         } else if (arg == "--nx") {
-            nx_base = std::stoi(argv[++i]);
+            nx = std::stoi(argv[++i]);
         } else if (arg == "--nt") {
             nt = std::stoi(argv[++i]);
-        } else if (arg == "--warmup") {
-            warmup = std::stoi(argv[++i]);
-        } else if (arg == "--repeats") {
-            repeats = std::stoi(argv[++i]);
         } else if (arg == "--out") {
             out_file = argv[++i];
+        } else if (arg == "--kernel") {
+            kernel = argv[++i];
         }
     }
 
@@ -83,78 +81,131 @@ int main(int argc, char** argv)
     real_t const cfl_factor = 0.49;
     real_t const gamma = 1.4;
 
-    auto run = [&](int nx) {
-        std::size_t const nxg_z = nx + 2;
-        index_t const nxg = nx + 2;
-        real_t const dx = 1.0 / nx;
+    auto run_scalar = [&](int nx_local) {
+        std::size_t const nxg_z = nx_local + 2;
+        index_t const nxg = nx_local + 2;
 
-        PerfectGas<real_t> const eos(gamma);
-        UniformMesh3d<real_t> const mesh(dx, dx, dx);
-        hllc const riemann_solver;
+        real_t const dx = 1.0 / nx_local;
 
-        EulerPrimArrays const prims_alloc
-                = create_prim_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
+        PerfectGas<real_t> eos(gamma);
+        UniformMesh3d<real_t> mesh(dx, dx, dx);
+        hllc riemann_solver;
 
-        EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
+        auto prim_alloc = create_prim_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
+
+        auto cons_alloc = create_cons_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
+
+        EulerPrimArrays prim_arrays = to_mdspan<Kokkos::mdspan<
                 real_t,
                 Kokkos::dextents<index_t, 3>,
-                Kokkos::layout_left>>(prims_alloc, nxg, nxg, nxg);
+                Kokkos::layout_left>>(prim_alloc, nxg, nxg, nxg);
 
-        EulerConsArrays const cons_alloc
-                = create_cons_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
-
-        EulerConsArrays const cons_arrays = to_mdspan<Kokkos::mdspan<
+        EulerConsArrays cons_arrays = to_mdspan<Kokkos::mdspan<
                 real_t,
                 Kokkos::dextents<index_t, 3>,
                 Kokkos::layout_left>>(cons_alloc, nxg, nxg, nxg);
 
         init_implode(exec_space, prim_arrays, mesh);
         prim_to_cons(exec_space, as_const(prim_arrays), cons_arrays, eos);
+
         exec_space.fence();
 
-        double best_time = 1e100;
+        auto const start = std::chrono::steady_clock::now();
 
-        for (int r = 0; r < repeats + warmup; ++r) {
-            auto const start = std::chrono::steady_clock::now();
+        for (int it = 0; it < nt; ++it) {
+            real_t dt = time_step(exec_space, as_const(prim_arrays), eos, mesh);
 
-            for (int it = 0; it < nt; ++it) {
-                real_t const dt = time_step(exec_space, as_const(prim_arrays), eos, mesh);
+            godunov(exec_space,
+                    as_const(prim_arrays),
+                    cons_arrays,
+                    eos,
+                    mesh,
+                    riemann_solver,
+                    cfl_factor * dt);
 
-                godunov(exec_space,
-                        as_const(prim_arrays),
-                        cons_arrays,
-                        eos,
-                        mesh,
-                        riemann_solver,
-                        cfl_factor * dt);
-
-                boundary_conditions_periodic(exec_space, cons_arrays, 1);
-                cons_to_prim(exec_space, as_const(cons_arrays), prim_arrays, eos);
-            }
-
-            exec_space.fence();
-
-            auto const end = std::chrono::steady_clock::now();
-            double t = std::chrono::duration<double>(end - start).count();
-
-            if (r >= warmup && t < best_time) {
-                best_time = t;
-            }
+            boundary_conditions_periodic(exec_space, cons_arrays, 1);
+            cons_to_prim(exec_space, as_const(cons_arrays), prim_arrays, eos);
         }
 
-        double cells = double(nt) * double(nx * nx * nx);
-        double mcell_s = (cells / best_time) * 1e-6;
+        exec_space.fence();
+
+        auto const end = std::chrono::steady_clock::now();
+        double t = std::chrono::duration<double>(end - start).count();
+
+        double cells = double(nt) * double(nx_local) * double(nx_local) * double(nx_local);
+
+        double mcell_s = (cells / t) * 1e-6;
 
         std::ofstream f(out_file, std::ios::app);
-        f << mode << "," << nx << "," << nt << "," << omp_get_max_threads() << "," << best_time
+        f << mode << "," << nx_local << "," << nt << "," << kernel << "," << threads << "," << t
           << "," << mcell_s << "\n";
     };
 
-    if (mode == "strong") {
-        run(nx_base);
+    auto run_vector = [&](int nx_local) {
+        std::size_t const nxg_z = nx_local + 2;
+        index_t const nxg = nx_local + 2;
+
+        real_t const dx = 1.0 / nx_local;
+
+        PerfectGas<real_t> eos(gamma);
+        UniformMesh3d<real_t> mesh(dx, dx, dx);
+        hllc riemann_solver;
+
+        auto prim_alloc = create_prim_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
+
+        auto cons_alloc = create_cons_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
+
+        EulerPrimArrays prim_arrays = to_mdspan<Kokkos::mdspan<
+                real_t,
+                Kokkos::dextents<index_t, 3>,
+                Kokkos::layout_left>>(prim_alloc, nxg, nxg, nxg);
+
+        EulerConsArrays cons_arrays = to_mdspan<Kokkos::mdspan<
+                real_t,
+                Kokkos::dextents<index_t, 3>,
+                Kokkos::layout_left>>(cons_alloc, nxg, nxg, nxg);
+
+        init_implode(exec_space, prim_arrays, mesh);
+        prim_to_cons_vec(exec_space, as_const(prim_arrays), cons_arrays, eos);
+
+        exec_space.fence();
+
+        auto const start = std::chrono::steady_clock::now();
+
+        for (int it = 0; it < nt; ++it) {
+            real_t dt = time_step_vec(exec_space, as_const(prim_arrays), eos, mesh);
+
+            godunov_vec(
+                    exec_space,
+                    as_const(prim_arrays),
+                    cons_arrays,
+                    eos,
+                    mesh,
+                    riemann_solver,
+                    cfl_factor * dt);
+
+            boundary_conditions_periodic(exec_space, cons_arrays, 1);
+            cons_to_prim_vec(exec_space, as_const(cons_arrays), prim_arrays, eos);
+        }
+
+        exec_space.fence();
+
+        auto const end = std::chrono::steady_clock::now();
+        double t = std::chrono::duration<double>(end - start).count();
+
+        double cells = double(nt) * double(nx_local) * double(nx_local) * double(nx_local);
+
+        double mcell_s = (cells / t) * 1e-6;
+
+        std::ofstream f(out_file, std::ios::app);
+        f << mode << "," << nx_local << "," << nt << "," << kernel << "," << threads << "," << t
+          << "," << mcell_s << "\n";
+    };
+
+    if (kernel == "vector") {
+        run_vector(nx);
     } else {
-        int threads = omp_get_max_threads();
-        run(nx_base * threads);
+        run_scalar(nx);
     }
 
     return 0;
