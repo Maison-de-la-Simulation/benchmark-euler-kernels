@@ -1,6 +1,7 @@
 #!/bin/bash
+
 #SBATCH --account=cad16293
-#SBATCH --job-name=bench_mi300
+#SBATCH --job-name=euler-benchmarks-mi300a
 #SBATCH --output=./slurm_out/%x.o%j
 #SBATCH --ntasks=1
 #SBATCH --nodes=1

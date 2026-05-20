@@ -46,6 +46,8 @@ jobs:
       - run: |
           cmake \
             -D BUILD_TESTING=ON \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D CMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic -pedantic-errors" \
             -D CMAKE_CXX_COMPILER=clang++-22 \
             -D CMAKE_CXX_CLANG_TIDY="clang-tidy-22;-warnings-as-errors=*" \
             -B build
@@ -65,6 +67,7 @@ jobs:
       - run: |
           cmake \
             -D BUILD_TESTING=ON \
+            -D CMAKE_BUILD_TYPE=Release \
             -D CMAKE_CXX_COMPILER=clang++-22 \
             -D CMAKE_CXX_INCLUDE_WHAT_YOU_USE="include-what-you-use;-Xiwyu;--no_fwd_decls;-Xiwyu;--error;-Xiwyu;--verbose=3;-Xiwyu;--mapping=$PWD/iwyu-kokkos.json;" \
             -D CMAKE_VERIFY_INTERFACE_HEADER_SETS=ON \
@@ -81,6 +84,9 @@ jobs:
       - run: |
           cmake \
             -D BUILD_TESTING=ON \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D CMAKE_COMPILE_WARNING_AS_ERROR=ON \
+            -D CMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic -pedantic-errors" \
             -B build
       - run: |
           cmake --build build --parallel 4

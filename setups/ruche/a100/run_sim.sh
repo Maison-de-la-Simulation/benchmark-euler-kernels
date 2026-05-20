@@ -1,4 +1,5 @@
 #!/bin/bash
+
 #SBATCH --job-name=test_a100
 #SBATCH --output=./slurm_out/%x.o%j
 #SBATCH --ntasks=1

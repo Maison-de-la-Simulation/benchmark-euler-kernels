@@ -26,9 +26,7 @@ export OMP_PROC_BIND=spread
 export OMP_PLACES=cores
 export OMP_DISPLAY_AFFINITY=TRUE
 
-############################
-# SETUP
-############################
+#-------- SETUP --------
 SCALING=weak  # strong | weak
 KERNEL=vector # scalar | vector
 
@@ -36,15 +34,13 @@ BASE_NX=256
 BASE_NX_WEAK=64
 NT=100
 
-THREADS_LIST="1 2 4 8 16 32"
+THREADS_LIST="1 2 4 8 16 32 64 128 192"
 
 OUT="results/scaling/genoa/${SLURM_JOB_ID}_${SCALING}-genoa_${KERNEL}.csv"
 
 echo "mode,nx,nt,kernel,threads,time_s,mcells_s" >"$OUT"
 
-############################
-# RUN
-############################
+# -------- RUN --------
 for t in $THREADS_LIST; do
   export OMP_NUM_THREADS=$t
 

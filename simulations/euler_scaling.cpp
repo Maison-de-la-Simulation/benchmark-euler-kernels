@@ -11,7 +11,6 @@
 #include <godunov.hpp>
 #include <hllc.hpp>
 #include <init_implode.hpp>
-#include <omp.h>
 #include <perfect_gas.hpp>
 #include <periodic_boundary_conditions.hpp>
 #include <prim_to_cons.hpp>
@@ -20,7 +19,10 @@
 #include <uniform_mesh.hpp>
 #include <unistd.h>
 
-static inline void print_affinity()
+using std::getenv;
+
+namespace {
+inline void print_affinity()
 {
     cpu_set_t set;
     CPU_ZERO(&set);
@@ -43,6 +45,7 @@ static inline void print_affinity()
         std::cout << "Failed to get CPU affinity\n";
     }
 }
+} // namespace
 
 int main(int argc, char** argv)
 {
@@ -52,10 +55,18 @@ int main(int argc, char** argv)
     std::string mode = "strong"; // strong | weak
     std::string out_file = "results.csv";
     std::string kernel = "scalar"; // scalar | vector
-    auto threads = omp_get_max_threads();
 
-    int nx = 256;
-    int nt = 200;
+    int threads = 1;
+
+    if (char const* env_p = getenv("OMP_NUM_THREADS")) {
+        threads = std::stoi(env_p);
+    }
+
+    int const nx_init = 256;
+    int const nt_init = 200;
+
+    int nx = nx_init;
+    int nt = nt_init;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -134,7 +145,9 @@ int main(int argc, char** argv)
 
         double cells = double(nt) * double(nx_local) * double(nx_local) * double(nx_local);
 
-        double mcell_s = (cells / t) * 1e-6;
+        double const to_mega = 1e-6;
+
+        double mcell_s = (cells / t) * to_mega;
 
         std::ofstream f(out_file, std::ios::app);
         f << mode << "," << nx_local << "," << nt << "," << kernel << "," << threads << "," << t
@@ -195,7 +208,8 @@ int main(int argc, char** argv)
 
         double cells = double(nt) * double(nx_local) * double(nx_local) * double(nx_local);
 
-        double mcell_s = (cells / t) * 1e-6;
+        double const to_mega = 1e-6;
+        double mcell_s = (cells / t) * to_mega;
 
         std::ofstream f(out_file, std::ios::app);
         f << mode << "," << nx_local << "," << nt << "," << kernel << "," << threads << "," << t

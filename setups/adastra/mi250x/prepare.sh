@@ -10,7 +10,7 @@ module load \
 export CC=hipcc
 export CXX=hipcc
 
-export install_dir=$PWD/opt/mi250x
+export install_dir=$PWD/opt/mi250
 export Kokkos_ROOT=$install_dir/kokkos
 export benchmark_ROOT=$install_dir/benchmark
 export GTest_ROOT=$install_dir/googletest
@@ -54,8 +54,5 @@ rm -rf build-googletest googletest
 
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
-  -B build-mi250x
-cmake --build build-mi250x --parallel 8
-
-# -D GTest_ROOT=$GTest_ROOT \
-# -D benchmark_DIR=$benchmark_ROOT/lib64/cmake/benchmark \
+  -B build-mi250
+cmake --build build-mi250 --parallel 8

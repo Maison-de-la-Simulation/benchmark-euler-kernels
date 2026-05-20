@@ -46,14 +46,14 @@ void prim_to_cons_kernel(
                 T,
                 Kokkos::extents<IndexType, E0, E1, E2>,
                 Kokkos::layout_left>> const& cons_arrays,
-        IndexType nx_begin,
-        IndexType nx_end,
+        IndexType n0_begin,
+        IndexType n0_end,
         PerfectGas<T> const& eos)
 {
     constexpr IndexType width = SimdType::size();
-    IndexType const nx_blocks = (nx_end - nx_begin) / width;
-    IndexType const ny = prim_arrays.d.extent(1);
-    IndexType const nz = prim_arrays.d.extent(2);
+    IndexType const n0_blocks = (n0_end - n0_begin) / width;
+    IndexType const n1 = prim_arrays.d.extent(1);
+    IndexType const n2 = prim_arrays.d.extent(2);
 
     Kokkos::layout_left::mapping const common_mapping = prim_arrays.d.mapping();
     EulerPrimArrays const prim_ptrs = data_handle(prim_arrays);
@@ -63,9 +63,9 @@ void prim_to_cons_kernel(
             "prim_to_cons_kernel",
             Kokkos::MDRangePolicy<
                     Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
-                    Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {nx_blocks, ny, nz}),
+                    Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {n0_blocks, n1, n2}),
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k) {
-                IndexType const base = common_mapping(nx_begin + (bi * width), j, k);
+                IndexType const base = common_mapping(n0_begin + (bi * width), j, k);
                 EulerPrim const prim = load<SimdType>(prim_ptrs, base);
                 EulerCons const cons = to_cons(prim, eos.internal_energy(prim.d, prim.p));
                 store<SimdType>(cons, cons_ptrs, base);
@@ -89,12 +89,12 @@ void prim_to_cons_vec(
     using simd_t = KE::simd<T>;
     using simd_scalar_t = KE::basic_simd<T, KE::simd_abi::scalar>;
 
-    IndexType const nx = prim_arrays.d.extent(0);
-    IndexType const vec_end = (nx / simd_t::size()) * simd_t::size();
+    IndexType const n0 = prim_arrays.d.extent(0);
+    IndexType const vec_end = (n0 / simd_t::size()) * simd_t::size();
 
     prim_to_cons_kernel<simd_t>(exec_space, prim_arrays, cons_arrays, IndexType(0), vec_end, eos);
 
-    if (vec_end < nx) {
-        prim_to_cons_kernel<simd_scalar_t>(exec_space, prim_arrays, cons_arrays, vec_end, nx, eos);
+    if (vec_end < n0) {
+        prim_to_cons_kernel<simd_scalar_t>(exec_space, prim_arrays, cons_arrays, vec_end, n0, eos);
     }
 }

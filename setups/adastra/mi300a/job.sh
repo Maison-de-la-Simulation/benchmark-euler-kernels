@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --account=gen2224
-#SBATCH --job-name=benchmarks-euler
+#SBATCH --job-name=euler-benchmarks-mi300a
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24

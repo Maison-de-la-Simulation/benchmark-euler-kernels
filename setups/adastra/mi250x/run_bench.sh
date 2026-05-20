@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --account=cad16293
-#SBATCH --job-name=euler-benchmarks-mi250x
+#SBATCH --job-name=euler-benchmarks-mi250
 #SBATCH --output=./slurm_out/%x.o%j
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
@@ -23,7 +23,7 @@ module load craype-accel-amd-gfx90a
 set -x
 cd "${SLURM_SUBMIT_DIR}" || exit
 
-mkdir -p slurm_out results/adastra/mi250x/
+mkdir -p slurm_out results/adastra/mi250/
 BENCHMARK_FILTER=${1:-""}
 
 export OMP_NUM_THREADS=1
@@ -31,7 +31,7 @@ export HSA_XNACK=1
 export CXX=hipcc
 
 SAVE_FILTER=$(echo "$BENCHMARK_FILTER" | sed 's/[()|^\/]/_/g')
-./build-mi250x/benchmarks/euler_benchmarks \
+./build-mi250/benchmarks/euler_benchmarks \
   --benchmark_filter="${BENCHMARK_FILTER}" \
   --benchmark_out_format=json \
-  --benchmark_out=./results/adastra/mi250x/"${SLURM_JOB_ID}_mi250x_${SAVE_FILTER}.json"
+  --benchmark_out=./results/adastra/mi250/"${SLURM_JOB_ID}_mi250_${SAVE_FILTER}.json"

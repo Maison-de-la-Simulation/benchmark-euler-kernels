@@ -133,15 +133,15 @@ EulerPrimArrays<typename AP::data_handle_type> data_handle(
 template <class MdspanOut, class View>
 EulerPrimArrays<MdspanOut> to_mdspan(
         EulerPrimArrays<View> const& prim_arrays,
-        typename MdspanOut::index_type nx,
-        typename MdspanOut::index_type ny,
-        typename MdspanOut::index_type nz) noexcept
+        typename MdspanOut::index_type n0,
+        typename MdspanOut::index_type n1,
+        typename MdspanOut::index_type n2) noexcept
 {
-    return {.d = MdspanOut(prim_arrays.d.data(), nx, ny, nz),
-            .p = MdspanOut(prim_arrays.p.data(), nx, ny, nz),
-            .ux0 = MdspanOut(prim_arrays.ux0.data(), nx, ny, nz),
-            .ux1 = MdspanOut(prim_arrays.ux1.data(), nx, ny, nz),
-            .ux2 = MdspanOut(prim_arrays.ux2.data(), nx, ny, nz)};
+    return {.d = MdspanOut(prim_arrays.d.data(), n0, n1, n2),
+            .p = MdspanOut(prim_arrays.p.data(), n0, n1, n2),
+            .ux0 = MdspanOut(prim_arrays.ux0.data(), n0, n1, n2),
+            .ux1 = MdspanOut(prim_arrays.ux1.data(), n0, n1, n2),
+            .ux2 = MdspanOut(prim_arrays.ux2.data(), n0, n1, n2)};
 }
 
 template <
@@ -191,32 +191,6 @@ KOKKOS_FORCEINLINE_FUNCTION EulerPrim<SimdType> load(
             .ux0 = SimdType(prim_ptrs.ux0 + base, KE::simd_flag_default),
             .ux1 = SimdType(prim_ptrs.ux1 + base, KE::simd_flag_default),
             .ux2 = SimdType(prim_ptrs.ux2 + base, KE::simd_flag_default),
-    };
-}
-
-template <
-        class SimdType,
-        class ElementType,
-        class IndexType,
-        std::size_t E0,
-        std::size_t E1,
-        std::size_t E2,
-        class AP>
-KOKKOS_FORCEINLINE_FUNCTION EulerPrim<SimdType> load(
-        EulerPrimArrays<Kokkos::mdspan<
-                ElementType,
-                Kokkos::extents<IndexType, E0, E1, E2>,
-                Kokkos::layout_left, // layout_left guarantees contiguous x-stride
-                AP>> const& prim_arrays,
-        IndexType const base) noexcept
-{
-    namespace KE = Kokkos::Experimental;
-    return {
-            .d = SimdType(prim_arrays.d.data_handle() + base, KE::simd_flag_default),
-            .p = SimdType(prim_arrays.p.data_handle() + base, KE::simd_flag_default),
-            .ux0 = SimdType(prim_arrays.ux0.data_handle() + base, KE::simd_flag_default),
-            .ux1 = SimdType(prim_arrays.ux1.data_handle() + base, KE::simd_flag_default),
-            .ux2 = SimdType(prim_arrays.ux2.data_handle() + base, KE::simd_flag_default),
     };
 }
 
@@ -339,15 +313,15 @@ EulerConsArrays<typename AP::data_handle_type> data_handle(
 template <class MdspanOut, class View>
 EulerConsArrays<MdspanOut> to_mdspan(
         EulerConsArrays<View> const& cons_arrays,
-        typename MdspanOut::index_type nx,
-        typename MdspanOut::index_type ny,
-        typename MdspanOut::index_type nz) noexcept
+        typename MdspanOut::index_type n0,
+        typename MdspanOut::index_type n1,
+        typename MdspanOut::index_type n2) noexcept
 {
-    return {.d = MdspanOut(cons_arrays.d.data(), nx, ny, nz),
-            .e = MdspanOut(cons_arrays.e.data(), nx, ny, nz),
-            .mx0 = MdspanOut(cons_arrays.mx0.data(), nx, ny, nz),
-            .mx1 = MdspanOut(cons_arrays.mx1.data(), nx, ny, nz),
-            .mx2 = MdspanOut(cons_arrays.mx2.data(), nx, ny, nz)};
+    return {.d = MdspanOut(cons_arrays.d.data(), n0, n1, n2),
+            .e = MdspanOut(cons_arrays.e.data(), n0, n1, n2),
+            .mx0 = MdspanOut(cons_arrays.mx0.data(), n0, n1, n2),
+            .mx1 = MdspanOut(cons_arrays.mx1.data(), n0, n1, n2),
+            .mx2 = MdspanOut(cons_arrays.mx2.data(), n0, n1, n2)};
 }
 
 template <
@@ -383,32 +357,6 @@ KOKKOS_FUNCTION EulerCons<std::remove_const_t<T>> load(
             .mx0 = cons_ptrs.mx0[i],
             .mx1 = cons_ptrs.mx1[i],
             .mx2 = cons_ptrs.mx2[i]};
-}
-
-template <
-        class SimdType,
-        class ElementType,
-        class IndexType,
-        std::size_t E0,
-        std::size_t E1,
-        std::size_t E2,
-        class AP>
-KOKKOS_FORCEINLINE_FUNCTION EulerCons<SimdType> load(
-        EulerConsArrays<Kokkos::mdspan<
-                ElementType,
-                Kokkos::extents<IndexType, E0, E1, E2>,
-                Kokkos::layout_left, // layout_left guarantees contiguous x-stride
-                AP>> const& cons_arrays,
-        IndexType const base) noexcept
-{
-    namespace KE = Kokkos::Experimental;
-    return {
-            .d = SimdType(cons_arrays.d.data_handle() + base, KE::simd_flag_default),
-            .e = SimdType(cons_arrays.e.data_handle() + base, KE::simd_flag_default),
-            .mx0 = SimdType(cons_arrays.mx0.data_handle() + base, KE::simd_flag_default),
-            .mx1 = SimdType(cons_arrays.mx1.data_handle() + base, KE::simd_flag_default),
-            .mx2 = SimdType(cons_arrays.mx2.data_handle() + base, KE::simd_flag_default),
-    };
 }
 
 template <class SimdType, class T, class IndexType>
