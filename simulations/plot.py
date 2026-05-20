@@ -500,6 +500,80 @@ def plot_scaling_dir(path):
     plt.tight_layout()
     plt.show()
 
-plot_scaling_dir("./results/scaling/genoa/")
-# plot_hw_scalar_vector("./results", "./results/test_polts/")
+from pathlib import Path
+import pandas as pd
+
+
+def compare_godunov_benchmarks(path, out_csv, base_name="Godunov", opti_name="GodunovOpti", cols=None):
+    """
+    Compare Godunov baseline vs optimized versions within the same benchmark JSON.
+    """
+
+    df, _ = load_one(path)
+
+    df_base = df[df["benchmark"] == base_name].copy()
+    df_opti = df[df["benchmark"] == opti_name].copy()
+
+    merged = pd.merge(
+        df_base,
+        df_opti,
+        on=["size"],
+        suffixes=("_base", "_opti"),
+        how="inner",
+    )
+
+    # -------------------------
+    # Core speedup
+    # -------------------------
+    merged["real_time_speedup"] = (
+        merged["real_time_ns_base"] / merged["real_time_ns_opti"]
+    )
+
+    # -------------------------
+    # Throughput speedups
+    # -------------------------
+    for col in ("cells_per_second", "bytes_per_second"):
+        base_col = f"{col}_base"
+        opti_col = f"{col}_opti"
+
+        if base_col in merged.columns and opti_col in merged.columns:
+            merged[f"{col}_speedup"] = merged[opti_col] / merged[base_col]
+
+    # -------------------------
+    # Optional column filtering
+    # -------------------------
+    if cols:
+        merged = merged[cols]
+
+    # -------------------------
+    # Mean row
+    # -------------------------
+    mean_row = merged.mean(numeric_only=True).to_frame().T
+    mean_row["benchmark"] = "MEAN"
+    mean_row["size"] = pd.NA
+    merged = pd.concat([merged, mean_row], ignore_index=True)
+
+    # -------------------------
+    # Rounding
+    # -------------------------
+    rounding = {c: 5 for c in merged.columns if "speedup" in c}
+    rounding |= {c: 5 for c in merged.columns if "time" in c}
+    rounding |= {c: 5 for c in merged.columns if "cells_per_second" in c or "bytes_per_second" in c}
+
+    merged = merged.round(rounding)
+
+    # -------------------------
+    # Output
+    # -------------------------
+    out_csv = Path(out_csv)
+    out_csv.parent.mkdir(parents=True, exist_ok=True)
+    merged.to_csv(out_csv, index=False)
+
+    return merged
+COLS=["benchmark_base", "size", "cells_per_second_speedup", "cells_per_second_base", "cells_per_second_opti"]
+# compare_godunov_benchmarks("./results/adastra/mi250x/4971156_mi250x__Godunov_GodunovOpti_GodunovVectorized__.json", "opti-base.csv",base_name="Godunov", opti_name='GodunovOpti' ,cols=COLS)
+# compare_godunov_benchmarks("./results/adastra/mi250x/4971156_mi250x__Godunov_GodunovOpti_GodunovVectorized__.json", "vec-opti.csv",base_name="GodunovVectorized", opti_name='GodunovOpti' ,cols=COLS)
+
+# plot_scaling_dir("./results/scaling/genoa/")
+plot_hw_scalar_vector("./results", "./results/test_polts/")
 # plot_hw_speedup("./results", "./results/test_polts/")
