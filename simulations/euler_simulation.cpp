@@ -63,8 +63,7 @@ int main(int argc, char** argv)
     while (it < nt) {
         real_t const dt = time_step(exec_space, as_const(prim_arrays), eos, mesh);
 
-        godunov_opti(
-                exec_space,
+        godunov(exec_space,
                 as_const(prim_arrays),
                 cons_arrays,
                 eos,
