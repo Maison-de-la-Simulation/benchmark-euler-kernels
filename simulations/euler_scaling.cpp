@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cstddef>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <ostream> // IWYU pragma: keep (std::flush)
@@ -17,9 +18,6 @@
 #include <sched.h>
 #include <time_step.hpp>
 #include <uniform_mesh.hpp>
-#include <unistd.h>
-
-using std::getenv;
 
 namespace {
 inline void print_affinity()
@@ -56,10 +54,10 @@ int main(int argc, char** argv)
     std::string out_file = "results.csv";
     std::string kernel = "scalar"; // scalar | vector
 
-    int threads = 1;
+    auto threads = std::thread::hardware_concurrency();
 
-    if (char const* env_p = getenv("OMP_NUM_THREADS")) {
-        threads = std::stoi(env_p);
+    if (threads == 0) {
+        threads = 1;
     }
 
     int const nx_init = 256;
@@ -69,7 +67,7 @@ int main(int argc, char** argv)
     int nt = nt_init;
 
     for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
+        std::string const arg = argv[i];
 
         if (arg == "--mode") {
             mode = argv[++i];
@@ -98,20 +96,20 @@ int main(int argc, char** argv)
 
         real_t const dx = 1.0 / nx_local;
 
-        PerfectGas<real_t> eos(gamma);
-        UniformMesh3d<real_t> mesh(dx, dx, dx);
-        hllc riemann_solver;
+        PerfectGas<real_t> const eos(gamma);
+        UniformMesh3d<real_t> const mesh(dx, dx, dx);
+        hllc const riemann_solver;
 
         auto prim_alloc = create_prim_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
 
         auto cons_alloc = create_cons_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
 
-        EulerPrimArrays prim_arrays = to_mdspan<Kokkos::mdspan<
+        EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
                 real_t,
                 Kokkos::dextents<index_t, 3>,
                 Kokkos::layout_left>>(prim_alloc, nxg, nxg, nxg);
 
-        EulerConsArrays cons_arrays = to_mdspan<Kokkos::mdspan<
+        EulerConsArrays const cons_arrays = to_mdspan<Kokkos::mdspan<
                 real_t,
                 Kokkos::dextents<index_t, 3>,
                 Kokkos::layout_left>>(cons_alloc, nxg, nxg, nxg);
@@ -124,7 +122,7 @@ int main(int argc, char** argv)
         auto const start = std::chrono::steady_clock::now();
 
         for (int it = 0; it < nt; ++it) {
-            real_t dt = time_step(exec_space, as_const(prim_arrays), eos, mesh);
+            real_t const dt = time_step(exec_space, as_const(prim_arrays), eos, mesh);
 
             godunov(exec_space,
                     as_const(prim_arrays),
@@ -141,13 +139,12 @@ int main(int argc, char** argv)
         exec_space.fence();
 
         auto const end = std::chrono::steady_clock::now();
-        double t = std::chrono::duration<double>(end - start).count();
+        double const t = std::chrono::duration<double>(end - start).count();
 
-        double cells = double(nt) * double(nx_local) * double(nx_local) * double(nx_local);
-
+        double const cells_updated = nt * static_cast<double>(nx_local * nx_local * nx_local);
         double const to_mega = 1e-6;
 
-        double mcell_s = (cells / t) * to_mega;
+        double const mcell_s = (cells_updated / t) * to_mega;
 
         std::ofstream f(out_file, std::ios::app);
         f << mode << "," << nx_local << "," << nt << "," << kernel << "," << threads << "," << t
@@ -160,20 +157,20 @@ int main(int argc, char** argv)
 
         real_t const dx = 1.0 / nx_local;
 
-        PerfectGas<real_t> eos(gamma);
-        UniformMesh3d<real_t> mesh(dx, dx, dx);
-        hllc riemann_solver;
+        PerfectGas<real_t> const eos(gamma);
+        UniformMesh3d<real_t> const mesh(dx, dx, dx);
+        hllc const riemann_solver;
 
         auto prim_alloc = create_prim_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
 
         auto cons_alloc = create_cons_arrays_1d<real_t>(exec_space, nxg_z * nxg_z * nxg_z);
 
-        EulerPrimArrays prim_arrays = to_mdspan<Kokkos::mdspan<
+        EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
                 real_t,
                 Kokkos::dextents<index_t, 3>,
                 Kokkos::layout_left>>(prim_alloc, nxg, nxg, nxg);
 
-        EulerConsArrays cons_arrays = to_mdspan<Kokkos::mdspan<
+        EulerConsArrays const cons_arrays = to_mdspan<Kokkos::mdspan<
                 real_t,
                 Kokkos::dextents<index_t, 3>,
                 Kokkos::layout_left>>(cons_alloc, nxg, nxg, nxg);
@@ -186,7 +183,7 @@ int main(int argc, char** argv)
         auto const start = std::chrono::steady_clock::now();
 
         for (int it = 0; it < nt; ++it) {
-            real_t dt = time_step_vec(exec_space, as_const(prim_arrays), eos, mesh);
+            real_t const dt = time_step_vec(exec_space, as_const(prim_arrays), eos, mesh);
 
             godunov_vec(
                     exec_space,
@@ -204,12 +201,12 @@ int main(int argc, char** argv)
         exec_space.fence();
 
         auto const end = std::chrono::steady_clock::now();
-        double t = std::chrono::duration<double>(end - start).count();
+        double const t = std::chrono::duration<double>(end - start).count();
 
-        double cells = double(nt) * double(nx_local) * double(nx_local) * double(nx_local);
+        double const cells_updated = nt * static_cast<double>(nx_local * nx_local * nx_local);
 
         double const to_mega = 1e-6;
-        double mcell_s = (cells / t) * to_mega;
+        double const mcell_s = (cells_updated / t) * to_mega;
 
         std::ofstream f(out_file, std::ios::app);
         f << mode << "," << nx_local << "," << nt << "," << kernel << "," << threads << "," << t
