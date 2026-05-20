@@ -153,9 +153,7 @@ def compare_benchmarks(path_a, path_b, out_csv, cols=None):
         how="inner",
     )
 
-    merged["real_time_speedup"] = (
-        merged["real_time_ns_a"] / merged["real_time_ns_b"]
-    )
+    merged["real_time_speedup"] = merged["real_time_ns_a"] / merged["real_time_ns_b"]
 
     for col in ("cells_per_second", "bytes_per_second"):
         a_col = f"{col}_a"
@@ -175,11 +173,7 @@ def compare_benchmarks(path_a, path_b, out_csv, cols=None):
 
     rounding = {c: 5 for c in merged.columns if "speedup" in c}
     rounding |= {c: 5 for c in merged.columns if "time" in c}
-    rounding |= {
-        c: 5
-        for c in merged.columns
-        if "cells_per_second" in c or "bytes_per_second" in c
-    }
+    rounding |= {c: 5 for c in merged.columns if "cells_per_second" in c or "bytes_per_second" in c}
 
     merged = merged.round(rounding)
 
@@ -213,18 +207,14 @@ def compare_godunov_benchmarks(
         how="inner",
     )
 
-    merged["real_time_speedup"] = (
-        merged["real_time_ns_base"] / merged["real_time_ns_opti"]
-    )
+    merged["real_time_speedup"] = merged["real_time_ns_base"] / merged["real_time_ns_opti"]
 
     for col in ("cells_per_second", "bytes_per_second"):
         base_col = f"{col}_base"
         opti_col = f"{col}_opti"
 
         if base_col in merged.columns and opti_col in merged.columns:
-            merged[f"{col}_speedup"] = (
-                merged[opti_col] / merged[base_col]
-            )
+            merged[f"{col}_speedup"] = merged[opti_col] / merged[base_col]
 
     if cols:
         merged = merged[cols]
@@ -237,11 +227,7 @@ def compare_godunov_benchmarks(
 
     rounding = {c: 5 for c in merged.columns if "speedup" in c}
     rounding |= {c: 5 for c in merged.columns if "time" in c}
-    rounding |= {
-        c: 5
-        for c in merged.columns
-        if "cells_per_second" in c or "bytes_per_second" in c
-    }
+    rounding |= {c: 5 for c in merged.columns if "cells_per_second" in c or "bytes_per_second" in c}
 
     merged = merged.round(rounding)
 
@@ -280,32 +266,21 @@ def plot_hw_speedup(res_dir, out_dir):
 
     df = pd.concat(data, ignore_index=True)
 
-    bases = {
-        benchmark.replace("Vectorized", "")
-        for benchmark in df["benchmark"].unique()
-    }
+    bases = {benchmark.replace("Vectorized", "") for benchmark in df["benchmark"].unique()}
 
     for base in bases:
 
         _, ax = plt.subplots(figsize=(8, 5))
 
-        metric = (
-            "bytes_per_second"
-            if base != "EulerSimulation"
-            else "real_time_ns"
-        )
+        metric = "bytes_per_second" if base != "EulerSimulation" else "real_time_ns"
 
         for hw in df["hardware"].unique():
 
             subset = df[df["hardware"] == hw]
 
-            scalar = subset[
-                subset["benchmark"] == base
-            ].sort_values("size")
+            scalar = subset[subset["benchmark"] == base].sort_values("size")
 
-            vector = subset[
-                subset["benchmark"] == f"{base}Vectorized"
-            ].sort_values("size")
+            vector = subset[subset["benchmark"] == f"{base}Vectorized"].sort_values("size")
 
             if scalar.empty or vector.empty:
                 continue
@@ -321,15 +296,9 @@ def plot_hw_speedup(res_dir, out_dir):
                 continue
 
             if metric == "bytes_per_second":
-                speedup = (
-                    merged[f"{metric}_vector"]
-                    / merged[f"{metric}_scalar"]
-                )
+                speedup = merged[f"{metric}_vector"] / merged[f"{metric}_scalar"]
             else:
-                speedup = (
-                    merged[f"{metric}_scalar"]
-                    / merged[f"{metric}_vector"]
-                )
+                speedup = merged[f"{metric}_scalar"] / merged[f"{metric}_vector"]
 
             ax.plot(
                 merged["size"],
@@ -392,10 +361,7 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
 
     df = pd.concat(data, ignore_index=True)
 
-    bases = {
-        benchmark.replace("Vectorized", "")
-        for benchmark in df["benchmark"].unique()
-    }
+    bases = {benchmark.replace("Vectorized", "") for benchmark in df["benchmark"].unique()}
 
     for base in bases:
 
@@ -411,13 +377,9 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
 
             subset = df[df["hardware"] == hw]
 
-            scalar = subset[
-                subset["benchmark"] == base
-            ].sort_values("size")
+            scalar = subset[subset["benchmark"] == base].sort_values("size")
 
-            vector = subset[
-                subset["benchmark"] == f"{base}Vectorized"
-            ].sort_values("size")
+            vector = subset[subset["benchmark"] == f"{base}Vectorized"].sort_values("size")
 
             if scalar.empty or vector.empty:
                 continue
@@ -521,9 +483,7 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
 def plot_scaling_dir(path):
     """Plot strong and weak scaling CSV files."""
 
-    files = sorted(
-        file for file in os.listdir(path) if file.endswith(".csv")
-    )
+    files = sorted(file for file in os.listdir(path) if file.endswith(".csv"))
 
     strong_scalar = None
     strong_vector = None
