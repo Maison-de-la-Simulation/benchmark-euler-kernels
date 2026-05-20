@@ -128,7 +128,6 @@ void godunov_opti(
                     {1 + (prim_arrays.d.extent(0) - 2),
                      1 + (prim_arrays.d.extent(1) - 2),
                      1 + (prim_arrays.d.extent(2) - 2)}),
-
             KOKKOS_LAMBDA(IndexType const i, IndexType const j, IndexType const k) {
                 IndexType const base = common_mapping(i, j, k);
                 EulerPrim const prim = load(prim_ptrs, base);
