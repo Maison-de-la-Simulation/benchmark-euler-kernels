@@ -13,7 +13,7 @@
 template <std::size_t N>
 using dir_t = std::integral_constant<std::size_t, N>;
 
-template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
+template <class T, class HLLC, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void godunov(
         Kokkos::DefaultExecutionSpace const& exec_space,
         EulerPrimArrays<Kokkos::mdspan<
@@ -26,7 +26,7 @@ void godunov(
                 Kokkos::layout_left>> const& cons_arrays,
         PerfectGas<T> const& eos,
         UniformMesh3d<T> const& mesh,
-        hllc const& riemann_solver,
+        HLLC const& riemann_solver,
         T const dt)
 {
     Kokkos::Array<T, 3> const ds = {mesh.ds0(), mesh.ds1(), mesh.ds2()};
@@ -92,7 +92,7 @@ void godunov(
             });
 }
 
-template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
+template <class T, class HLLC, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void godunov_opti(
         Kokkos::DefaultExecutionSpace const& exec_space,
         EulerPrimArrays<Kokkos::mdspan<
@@ -105,7 +105,7 @@ void godunov_opti(
                 Kokkos::layout_left>> const& cons_arrays,
         PerfectGas<T> const& eos,
         UniformMesh3d<T> const& mesh,
-        hllc const& riemann_solver,
+        HLLC const& riemann_solver,
         T const dt)
 {
     Kokkos::Array<T, 3> const ds = {mesh.ds0(), mesh.ds1(), mesh.ds2()};
@@ -177,7 +177,14 @@ void godunov_opti(
             });
 }
 
-template <class SimdType, class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
+template <
+        class SimdType,
+        class T,
+        class HLLC,
+        class IndexType,
+        std::size_t E0,
+        std::size_t E1,
+        std::size_t E2>
 void godunov_kernel(
         Kokkos::DefaultExecutionSpace const& exec_space,
         EulerPrimArrays<Kokkos::mdspan<
@@ -192,7 +199,7 @@ void godunov_kernel(
         IndexType n0_end,
         PerfectGas<T> const& eos,
         UniformMesh3d<T> const& mesh,
-        hllc const& riemann_solver,
+        HLLC const& riemann_solver,
         T const dt)
 {
     constexpr IndexType width = SimdType::size();
@@ -268,7 +275,7 @@ void godunov_kernel(
             });
 }
 
-template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
+template <class T, class HLLC, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void godunov_vec(
         Kokkos::DefaultExecutionSpace const& exec_space,
         EulerPrimArrays<Kokkos::mdspan<
@@ -281,7 +288,7 @@ void godunov_vec(
                 Kokkos::layout_left>> const& cons_arrays,
         PerfectGas<T> const& eos,
         UniformMesh3d<T> const& mesh,
-        hllc const& riemann_solver,
+        HLLC const& riemann_solver,
         T const dt)
 {
     namespace KE = Kokkos::Experimental;
