@@ -4,6 +4,7 @@
 #include <type_traits>
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_Macros.hpp>
 #include <Kokkos_SIMD.hpp>
 
 template <class T>
@@ -43,7 +44,7 @@ KOKKOS_FORCEINLINE_FUNCTION T kinetic_energy(EulerPrim<T> const prim) noexcept
 }
 
 template <class T>
-KOKKOS_FUNCTION constexpr T kinetic_energy(EulerCons<T> const cons) noexcept
+KOKKOS_FORCEINLINE_FUNCTION constexpr T kinetic_energy(EulerCons<T> const cons) noexcept
 {
     return 0.5 * ((cons.mx0 * cons.mx0) + (cons.mx1 * cons.mx1) + (cons.mx2 * cons.mx2)) / cons.d;
 }

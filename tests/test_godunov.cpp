@@ -93,7 +93,7 @@ void run_case(int n, double dt, EulerPrim<double> const& prim)
                auto const& mesh,
                auto solver,
                double dt) { godunov(exec, P, U, eos, mesh, solver, dt); },
-            hllc {});
+            hllc_opti {});
 
     auto cons_vec = run(
             exec,

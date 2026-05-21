@@ -111,7 +111,7 @@ def load_one(path):
         rows.append(
             {
                 "benchmark": name.split("/")[0],
-                "size": int(name.split("/")[-1]),
+                "size": int(name.split("/")[-2]),
                 "cells_per_second": b.get("cells_per_second"),
                 "bytes_per_second": b.get("bytes_per_second"),
                 "real_time_ns": b.get("real_time"),
@@ -381,14 +381,94 @@ def compare_benchmarks(path_a, path_b, out_csv, cols=None):
 # %%
 
 
-FILES = {
-    "skx_new": latest_result("."),
-}
-plot_scalar_vs_vector(FILES, OUT_DIR)
-COLS = ["benchmark", "size", "real_time_speedup"]
-compare_benchmarks(
-    FILES["skx_new"],
-    FILES["skx_new"],
-    "store.csv",
-    cols=COLS,
-)
+
+
+def compare_hllc_opti_pairs(path_json, out_csv, cols=None):
+    """Compare benchmarks against their HllcOpti variants.
+
+    Example:
+        Godunov                vs GodunovHllcOpti
+        GodunovOpti            vs GodunovOptiHllcOpti
+        GodunovVectorized      vs GodunovVectorizedHllcOpti
+
+    Args:
+        path_json: Path to benchmark JSON file.
+        out_csv: Output CSV path.
+        cols: Optional list of columns to keep.
+
+    Returns:
+        DataFrame with speedup metrics.
+    """
+    df, _ = load_one(path_json)
+
+    base = df[~df["benchmark"].str.endswith("HllcOpti")].copy()
+    opti = df[df["benchmark"].str.endswith("HllcOpti")].copy()
+
+    opti["benchmark"] = opti["benchmark"].str.replace(
+        "HllcOpti", "", regex=False
+    )
+
+    merged = pd.merge(
+        base,
+        opti,
+        on=["benchmark", "size"],
+        suffixes=("_base", "_opti"),
+        how="inner",
+    )
+
+    merged["real_time_speedup"] = (
+        merged["real_time_ns_base"] / merged["real_time_ns_opti"]
+    )
+
+    for col in ("cells_per_second", "bytes_per_second"):
+        base_col = f"{col}_base"
+        opti_col = f"{col}_opti"
+
+        if base_col in merged and opti_col in merged:
+            merged[f"{col}_speedup"] = (
+                merged[opti_col] / merged[base_col]
+            )
+
+    if cols:
+        merged = merged[cols]
+
+    mean_row = merged.mean(numeric_only=True).to_frame().T
+    mean_row["benchmark"] = "MEAN"
+    mean_row["size"] = pd.NA
+
+    merged = pd.concat([merged, mean_row], ignore_index=True)
+
+    rounding = {c: 5 for c in merged.columns if "speedup" in c}
+    rounding |= {c: 5 for c in merged.columns if "time" in c}
+    rounding |= {
+        c: 5
+        for c in merged.columns
+        if "cells_per_second" in c or "bytes_per_second" in c
+    }
+
+    merged = merged.round(rounding)
+
+    out_csv = Path(out_csv)
+    out_csv.parent.mkdir(parents=True, exist_ok=True)
+
+    merged.to_csv(out_csv, index=False)
+
+    return merged
+# %%
+COLS = ["benchmark", "size", "real_time_speedup", "cells_per_second_base", "cells_per_second_opti"]
+
+# compare_hllc_opti_pairs("./results/adastra/genoa/[4976036]_Godunov_hllc-opti1x.json", "opti1x-genoa.csv", COLS)
+compare_hllc_opti_pairs("./results/adastra/genoa/[4976121]_Godunov_hllc-opti2.json", "opti2-genoa.csv", COLS)
+compare_hllc_opti_pairs("./results/adastra/mi300/[4976127]_mi300_Godunov_hllc-opti2.json", "opti2-mi300.csv", COLS)
+# compare_hllc_opti_pairs("./results/adastra/mi300/[4976050]_mi300_Godunov_hllc-opti1x.json", "opti1x-mi300.csv", COLS)
+# FILES = {
+#     "skx_new": latest_result("."),
+# }
+# plot_scalar_vs_vector(FILES, OUT_DIR)
+# COLS = ["benchmark", "size", "real_time_speedup"]
+# compare_benchmarks(
+#     FILES["skx_new"],
+#     FILES["skx_new"],
+#     "store.csv",
+#     cols=COLS,
+# )

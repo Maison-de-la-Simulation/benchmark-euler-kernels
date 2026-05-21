@@ -186,34 +186,31 @@ struct hllc_opti
         auto const cond_SR = S_L * S_R > 0;
 
         // Select wave speed and state
-        T const d = select(cond_ustar, q_L.d, q_R.d);
-        T const p = select(cond_ustar, q_L.p, q_R.p);
-
-        T const ux0 = select(cond_ustar, q_L.ux0, q_R.ux0);
-        T const ux1 = select(cond_ustar, q_L.ux1, q_R.ux1);
-        T const ux2 = select(cond_ustar, q_L.ux2, q_R.ux2);
+        EulerPrim<T> q {};
+        q.d = select(cond_ustar, q_L.d, q_R.d);
+        q.p = select(cond_ustar, q_L.p, q_R.p);
+        q.ux0 = select(cond_ustar, q_L.ux0, q_R.ux0);
+        q.ux1 = select(cond_ustar, q_L.ux1, q_R.ux1);
+        q.ux2 = select(cond_ustar, q_L.ux2, q_R.ux2);
 
         T const un = select(cond_ustar, un_L, un_R);
         T const S = select(cond_ustar, S_L, S_R);
 
         // energy
 
-        T const v2 = (ux0 * ux0) + (ux1 * ux1) + (ux2 * ux2);
-
-        T const eint = eos.internal_energy(d, p);
-        T const etot = eint + (0.5 * d * v2);
+        T const etot = eos.internal_energy(q.d, q.p) + kinetic_energy(q);
 
         // Output states
         T const un_o = select(cond_SR, un, ustar);
-        T const ptot_o = select(cond_SR, p, pstar);
+        T const ptot_o = select(cond_SR, q.p, pstar);
 
         T const inv_S = 1 / (S - un_o);
 
         T const scale = (S - un) * inv_S;
 
-        T const d_o = scale * d;
+        T const d_o = scale * q.d;
 
-        T const etot_o = (scale * etot) + (((ptot_o * un_o) - (p * un)) / (S - ustar));
+        T const etot_o = (scale * etot) + (((ptot_o * un_o) - (q.p * un)) / (S - ustar));
 
         // flux
 
@@ -224,9 +221,9 @@ struct hllc_opti
         flux.d = mom;
         flux.e = (etot_o + ptot_o) * un_o;
 
-        flux.mx0 = mom * ux0;
-        flux.mx1 = mom * ux1;
-        flux.mx2 = mom * ux2;
+        flux.mx0 = mom * q.ux0;
+        flux.mx1 = mom * q.ux1;
+        flux.mx2 = mom * q.ux2;
 
         if constexpr (Dir == 0) {
             flux.mx0 = (mom * un_o) + ptot_o;
