@@ -37,19 +37,19 @@ struct EulerFlux
 };
 
 template <class T>
-KOKKOS_FUNCTION T kinetic_energy(EulerPrim<T> const& prim) noexcept
+KOKKOS_FORCEINLINE_FUNCTION T kinetic_energy(EulerPrim<T> const prim) noexcept
 {
-    return prim.d * ((prim.ux0 * prim.ux0) + (prim.ux1 * prim.ux1) + (prim.ux2 * prim.ux2)) / 2;
+    return 0.5 * prim.d * ((prim.ux0 * prim.ux0) + (prim.ux1 * prim.ux1) + (prim.ux2 * prim.ux2));
 }
 
 template <class T>
-KOKKOS_FUNCTION constexpr T kinetic_energy(EulerCons<T> const& cons) noexcept
+KOKKOS_FUNCTION constexpr T kinetic_energy(EulerCons<T> const cons) noexcept
 {
-    return ((cons.mx0 * cons.mx0) + (cons.mx1 * cons.mx1) + (cons.mx2 * cons.mx2)) / cons.d / 2;
+    return 0.5 * ((cons.mx0 * cons.mx0) + (cons.mx1 * cons.mx1) + (cons.mx2 * cons.mx2)) / cons.d;
 }
 
 template <class T>
-KOKKOS_FUNCTION constexpr T internal_energy(EulerCons<T> const& cons) noexcept
+KOKKOS_FORCEINLINE_FUNCTION constexpr T internal_energy(EulerCons<T> const cons) noexcept
 {
     return cons.e - kinetic_energy(cons);
 }

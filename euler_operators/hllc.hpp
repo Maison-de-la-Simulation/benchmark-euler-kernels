@@ -141,3 +141,101 @@ struct hllc
         return flux;
     }
 };
+
+struct hllc_opti
+{
+    template <std::size_t Dir, class T, class U>
+    KOKKOS_FORCEINLINE_FUNCTION EulerFlux<T> operator()(
+            std::integral_constant<std::size_t, Dir> dir,
+            PerfectGas<U> const& eos,
+            EulerPrim<T> const& q_L,
+            EulerPrim<T> const& q_R) const noexcept
+    {
+        static_assert(Dir < 3);
+
+        using detail::select;
+
+        T const un_L = get(dir, q_L);
+        T const un_R = get(dir, q_R);
+
+        T const c_L = eos.speed_of_sound(q_L.d, q_L.p);
+        T const c_R = eos.speed_of_sound(q_R.d, q_R.p);
+
+        T const c_max = Kokkos::max(c_L, c_R);
+        T const un_min = Kokkos::min(un_L, un_R);
+        T const un_max = Kokkos::max(un_L, un_R);
+
+        T const S_L = un_min - c_max;
+        T const S_R = un_max + c_max;
+
+        T const S_L_minus_un_L = S_L - un_L;
+        T const S_R_minus_un_R = S_R - un_R;
+
+        T const rc_L = q_L.d * S_L_minus_un_L;
+        T const rc_R = q_R.d * S_R_minus_un_R;
+
+        // Compute acoustic star states
+        T const inv_rc = 1 / (rc_L - rc_R);
+
+        T const ustar = (q_R.p - q_L.p + (rc_L * un_L) - (rc_R * un_R)) * inv_rc;
+
+        T const pstar = 0.5 * (q_L.p + q_R.p + (rc_L * (ustar - un_L)) + (rc_R * (ustar - un_R)));
+
+        // Conditions (scalar -> bool, SIMD -> mask)
+        auto const cond_ustar = ustar > 0;
+        auto const cond_SR = S_L * S_R > 0;
+
+        // Select wave speed and state
+        T const d = select(cond_ustar, q_L.d, q_R.d);
+        T const p = select(cond_ustar, q_L.p, q_R.p);
+
+        T const ux0 = select(cond_ustar, q_L.ux0, q_R.ux0);
+        T const ux1 = select(cond_ustar, q_L.ux1, q_R.ux1);
+        T const ux2 = select(cond_ustar, q_L.ux2, q_R.ux2);
+
+        T const un = select(cond_ustar, un_L, un_R);
+        T const S = select(cond_ustar, S_L, S_R);
+
+        // energy
+
+        T const v2 = (ux0 * ux0) + (ux1 * ux1) + (ux2 * ux2);
+
+        T const eint = eos.internal_energy(d, p);
+        T const etot = eint + (0.5 * d * v2);
+
+        // Output states
+        T const un_o = select(cond_SR, un, ustar);
+        T const ptot_o = select(cond_SR, p, pstar);
+
+        T const inv_S = 1 / (S - un_o);
+
+        T const scale = (S - un) * inv_S;
+
+        T const d_o = scale * d;
+
+        T const etot_o = (scale * etot) + (((ptot_o * un_o) - (p * un)) / (S - ustar));
+
+        // flux
+
+        T const mom = d_o * un_o;
+
+        EulerFlux<T> flux {};
+
+        flux.d = mom;
+        flux.e = (etot_o + ptot_o) * un_o;
+
+        flux.mx0 = mom * ux0;
+        flux.mx1 = mom * ux1;
+        flux.mx2 = mom * ux2;
+
+        if constexpr (Dir == 0) {
+            flux.mx0 = (mom * un_o) + ptot_o;
+        } else if constexpr (Dir == 1) {
+            flux.mx1 = (mom * un_o) + ptot_o;
+        } else {
+            flux.mx2 = (mom * un_o) + ptot_o;
+        }
+
+        return flux;
+    }
+};
