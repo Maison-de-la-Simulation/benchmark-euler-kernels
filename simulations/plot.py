@@ -381,14 +381,301 @@ def compare_benchmarks(path_a, path_b, out_csv, cols=None):
 # %%
 
 
-FILES = {
-    "skx_new": latest_result("."),
-}
-plot_scalar_vs_vector(FILES, OUT_DIR)
-COLS = ["benchmark", "size", "real_time_speedup"]
-compare_benchmarks(
-    FILES["skx_new"],
-    FILES["skx_new"],
-    "store.csv",
-    cols=COLS,
-)
+from pathlib import Path
+
+# def plot_strong_scaling(csv_paths):
+#     """Plot strong scaling and throughput."""
+
+#     fig, (ax_perf, ax_scaling) = plt.subplots(
+#         1,
+#         2,
+#         figsize=(14, 6),
+#         gridspec_kw={"width_ratios": [1, 2]},
+#     )
+
+#     plotted_ideal_scaling = False
+
+#     for csv_path in csv_paths:
+
+#         path = Path(csv_path)
+
+#         df = pd.read_csv(csv_path)
+
+#         threads = df["threads"].to_numpy()
+#         time = df["time_s"].to_numpy()
+#         mcells = df["mcells_s"].to_numpy()
+
+#         speedup = time[0] / time
+#         ratio = threads / threads[0]
+
+#         parts = path.stem.split("_")
+
+#         hardware = "unknown"
+#         kind = "unknown"
+
+#         for part in parts:
+
+#             if "strong" in part:
+#                 hardware = part.replace("strong-", "")
+
+#             if part in ("scalar", "vector"):
+#                 kind = part
+
+#         label = f"{hardware} {kind}"
+
+#         # ------------------------------------------------------------
+#         # strong scaling plot
+#         # ------------------------------------------------------------
+
+#         actual = ax_scaling.plot(
+#             threads,
+#             speedup,
+#             marker="o",
+#             linewidth=2,
+#             label=f"{label} actual",
+#         )[0]
+
+#         color = actual.get_color()
+
+#         # only plot one ideal scaling line
+#         if not plotted_ideal_scaling:
+
+#             ax_scaling.plot(
+#                 threads,
+#                 ratio,
+#                 "--",
+#                 color="black",
+#                 linewidth=2,
+#                 alpha=0.8,
+#                 label="ideal",
+#             )
+
+#             plotted_ideal_scaling = True
+
+#         # ------------------------------------------------------------
+#         # throughput plot
+#         # ------------------------------------------------------------
+
+#         ax_perf.plot(
+#             threads,
+#             mcells,
+#             marker="o",
+#             linewidth=2,
+#             color=color,
+#             label=f"{label} actual",
+#         )
+
+#         # ideal throughput
+#         ideal_perf = mcells[0] * ratio
+#         print("ideal_pef = ", ideal_perf)
+#         print("mcells = ", mcells)
+
+#         ax_perf.plot(
+#             threads,
+#             ideal_perf,
+#             "--",
+#             color=color,
+#             linewidth=2,
+#             alpha=0.8,
+#             label=f"{label} ideal",
+#         )
+
+#     # ------------------------------------------------------------
+#     # throughput formatting
+#     # ------------------------------------------------------------
+
+#     ax_perf.set_xscale("log")
+#     ax_perf.set_yscale("log")
+
+#     ax_perf.set_xlabel("Threads")
+#     ax_perf.set_ylabel("MCells/s")
+
+#     ax_perf.set_title("Throughput")
+
+#     ax_perf.grid(True, which="both", linestyle="--", alpha=0.5)
+
+#     ax_perf.legend()
+
+#     # ------------------------------------------------------------
+#     # strong scaling formatting
+#     # ------------------------------------------------------------
+
+#     ax_scaling.set_xscale("log")
+#     ax_scaling.set_yscale("log")
+
+#     ax_scaling.set_xlabel("Threads")
+#     ax_scaling.set_ylabel("Speedup")
+
+#     ax_scaling.set_title("Strong Scaling")
+
+#     ax_scaling.grid(True, which="both", linestyle="--", alpha=0.5)
+
+#     ax_scaling.legend()
+
+#     plt.tight_layout()
+#     plt.show()
+
+def plot_strong_scaling(csv_paths):
+    """Plot strong scaling and throughput."""
+
+    fig, (ax_perf, ax_scaling) = plt.subplots(
+        1,
+        2,
+        figsize=(14, 6),
+        gridspec_kw={"width_ratios": [1, 2]},
+    )
+
+    plotted_ideal_scaling = False
+
+    for csv_path in csv_paths:
+
+        path = Path(csv_path)
+
+        df = pd.read_csv(csv_path)
+
+        threads = df["threads"].to_numpy()
+        time = df["time_s"].to_numpy()
+        mcells = df["mcells_s"].to_numpy()
+
+        speedup = time[0] / time
+        ratio = threads / threads[0]
+
+        parts = path.stem.split("_")
+
+        hardware = "unknown"
+        kind = "unknown"
+
+        for part in parts:
+
+            if "strong" in part:
+                hardware = part.replace("strong-", "")
+
+            if part in ("scalar", "vector"):
+                kind = part
+
+        label = f"{hardware} {kind}"
+
+        # ------------------------------------------------------------
+        # strong scaling plot
+        # ------------------------------------------------------------
+
+        actual = ax_scaling.plot(
+            threads,
+            speedup,
+            marker="o",
+            linewidth=2,
+            label=label,
+        )[0]
+
+        color = actual.get_color()
+
+        # plot only one ideal scaling line
+        if not plotted_ideal_scaling:
+
+            ax_scaling.plot(
+                threads,
+                ratio,
+                "--",
+                color="black",
+                linewidth=2,
+                alpha=0.8,
+                label="ideal",
+            )
+
+            plotted_ideal_scaling = True
+
+        # ------------------------------------------------------------
+        # throughput plot
+        # ------------------------------------------------------------
+
+        ax_perf.plot(
+            threads,
+            mcells,
+            marker="o",
+            linewidth=2,
+            color=color,
+            label=label,
+        )
+
+        # ideal throughput
+        ideal_perf = mcells[0] * ratio
+
+        ax_perf.plot(
+            threads,
+            ideal_perf,
+            "--",
+            color=color,
+            linewidth=2,
+            alpha=0.8,
+        )
+
+    # ------------------------------------------------------------
+    # MI300 reference throughput lines
+    # ------------------------------------------------------------
+
+    mi300_vector = 5640.74  # MCells/s
+    mi300_scalar = 5639.14  # MCells/s
+
+    ax_perf.axhline(
+        mi300_vector,
+        linestyle=":",
+        linewidth=2,
+        color="red",
+        label="MI300 vectorized",
+    )
+
+    ax_perf.axhline(
+        mi300_scalar,
+        linestyle=":",
+        linewidth=2,
+        color="purple",
+        label="MI300 scalar",
+    )
+
+    # ------------------------------------------------------------
+    # throughput formatting
+    # ------------------------------------------------------------
+
+    ax_perf.set_xscale("log", base=2)
+    ax_perf.set_yscale("log", base=2)
+
+    ax_perf.set_xlabel("Threads")
+    ax_perf.set_ylabel("MCells/s")
+
+    ax_perf.set_title("Throughput")
+
+    ax_perf.grid(True, which="both", linestyle="--", alpha=0.5)
+
+    ax_perf.legend()
+
+    # ------------------------------------------------------------
+    # strong scaling formatting
+    # ------------------------------------------------------------
+
+    ax_scaling.set_xscale("log", base=2)
+    ax_scaling.set_yscale("log", base=2)
+
+    ax_scaling.set_xlabel("Threads")
+    ax_scaling.set_ylabel("Speedup")
+
+    ax_scaling.set_title("Strong Scaling")
+
+    ax_scaling.grid(True, which="both", linestyle="--", alpha=0.5)
+
+    ax_scaling.legend()
+
+    plt.tight_layout()
+    plt.show()
+files = ["./results/scaling/genoa/4979270_strong-genoa_vector_FINAL.csv", "./results/scaling/genoa/4979653_strong-genoa_scalar_FINAL.csv"]
+plot_strong_scaling(files)
+# FILES = {
+#     "skx_new": latest_result("."),
+# }
+# plot_scalar_vs_vector(FILES, OUT_DIR)
+# COLS = ["benchmark", "size", "real_time_speedup"]
+# compare_benchmarks(
+#     FILES["skx_new"],
+#     FILES["skx_new"],
+#     "store.csv",
+#     cols=COLS,
+# )
