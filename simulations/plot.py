@@ -133,7 +133,11 @@ import matplotlib.pyplot as plt
 # shared helpers
 # ----------------------------
 
-
+# SAVE_PLOTS = False
+SAVE_PLOTS = True
+FONT_SIZE = 6
+LOG_BASE_Y = 10
+LOG_BASE_X = 2
 HW_COLORS = {
     "skx": "C0",
     "genoa": "C1",
@@ -158,6 +162,15 @@ HW_LABELS = {
     "mi250": "MI250X (GPU)",
     "unknown": "Unknown",
 }
+
+
+# Mcells/s
+GPU_BASELINES = {
+    "a100": 2.68162 * 10**3,
+    "mi250": 2.42696 * 10**3,
+    "mi300": 5.63914 * 10**3,
+}
+DPI_SIZE = 100
 
 
 def get_hw(path):
@@ -196,6 +209,13 @@ def _plot_series(ax, data, color, label, metric):
         markersize=3,
         alpha=0.7,
     )
+
+
+from matplotlib.lines import Line2D
+
+from pathlib import Path
+import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def plot_hw_speedup(res_dir, out_dir):
@@ -269,6 +289,7 @@ def plot_hw_speedup(res_dir, out_dir):
 
         ax.axhline(1.0, color="black", linestyle="--", linewidth=1)
 
+        ax.set_xscale("log", base=LOG_BASE_X)
         ax.set_title(f"{base} Speedup (Vectorized vs Scalar)")
         ax.set_xlabel("n (cube width in cells)")
         ax.set_ylabel("Speedup")
@@ -277,12 +298,15 @@ def plot_hw_speedup(res_dir, out_dir):
         legend = ax.legend(
             hardware_handles.values(),
             [hw_label_speedup(hw) for hw in hardware_handles.keys()],
-            fontsize=8,
+            fontsize=FONT_SIZE,
         )
         ax.add_artist(legend)
 
         plt.tight_layout()
-        plt.savefig(out_dir / f"{base}_speedup.png", dpi=200)
+        if SAVE_PLOTS:
+            plt.savefig(out_dir / f"{base}_speedup.png", dpi=DPI_SIZE)
+        else:
+            plt.show()
         plt.close()
 
 
@@ -346,10 +370,9 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
         legend1 = ax_cells.legend(
             hardware_handles.values(),
             [hw_label_speedup(hw) for hw in hardware_handles.keys()],
-            bbox_to_anchor=(0.7, 0.3),
-            loc="best",
-            fontsize=8,
-            title="Hardware",
+            loc="center right",
+            fontsize=FONT_SIZE,
+            # title="Hardware",
         )
 
         ax_cells.add_artist(legend1)
@@ -362,24 +385,28 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
             ["scalar", "vectorized"],
             loc="upper left",
             bbox_to_anchor=(0.0, 1.0),
-            fontsize=8,
+            fontsize=FONT_SIZE,
             title="Kernel",
         )
 
-        ax_cells.set_yscale("log")
+        ax_cells.set_yscale("log", base=LOG_BASE_Y)
+        ax_cells.set_xscale("log", base=LOG_BASE_X)
         ax_cells.set_ylabel("cells per second")
 
         if not is_euler and ax_bytes is not None:
-            ax_bytes.set_yscale("log")
+            ax_bytes.set_yscale("log", base=LOG_BASE_Y)
             ax_bytes.set_ylabel("bytes per second")
+            ax_bytes.set_xscale("log", base=LOG_BASE_X)
 
         ax_cells.set_xlabel("n (cube width in cells)")
         ax_cells.set_title(f"{title} {base}".strip())
         ax_cells.grid(True)
 
         plt.tight_layout()
-        # plt.show()
-        plt.savefig(out_dir / f"{base}_hw_compare.png", dpi=200)
+        if SAVE_PLOTS:
+            plt.savefig(out_dir / f"{base}_hw_compare.png", dpi=DPI_SIZE)
+        else:
+            plt.show()
         plt.close()
 
 
@@ -397,6 +424,7 @@ def plot_scaling_dir(res_dir, out_dir, title=""):
 
     for f in files:
         df = pd.read_csv(f)
+
         hw = get_hw(f)
         mode = "vector" if "vector" in f.stem.lower() else "scalar"
 
@@ -408,6 +436,7 @@ def plot_scaling_dir(res_dir, out_dir, title=""):
     df = pd.concat(data, ignore_index=True)
 
     for scaling in sorted(df["mode"].unique()):
+
         dscale = df[df["mode"] == scaling]
 
         fig, (ax_thr, ax_spd) = plt.subplots(1, 2, figsize=(14, 5))
@@ -420,16 +449,18 @@ def plot_scaling_dir(res_dir, out_dir, title=""):
             color = HW_COLORS.get(hw, "black")
 
             for kernel_mode, linestyle in [("scalar", "-"), ("vector", "--")]:
-                dk = dhw[dhw["kernel_mode"] == kernel_mode]
 
+                dk = dhw[dhw["kernel_mode"] == kernel_mode]
                 if dk.empty:
                     continue
 
                 dk = dk.sort_values("threads")
+                iter_avg = dk["nt"].unique()[0]
+                print("iter_avg = ", iter_avg)
 
-                ax_thr.plot(
+                (line_thr,) = ax_thr.plot(
                     dk["threads"],
-                    dk["mcells_s"],
+                    dk["mcells_s"] / iter_avg,
                     marker="o",
                     markersize=4,
                     linestyle=linestyle,
@@ -440,7 +471,7 @@ def plot_scaling_dir(res_dir, out_dir, title=""):
                 baseline = dk.iloc[0]["time_s"]
                 speedup = baseline / dk["time_s"]
 
-                ax_spd.plot(
+                (line_spd,) = ax_spd.plot(
                     dk["threads"],
                     speedup,
                     marker="o",
@@ -451,81 +482,107 @@ def plot_scaling_dir(res_dir, out_dir, title=""):
                 )
 
                 if kernel_mode == "scalar" and hw not in hardware_handles_thr:
-                    hardware_handles_thr[hw] = ax_thr.lines[-1]
-                    hardware_handles_spd[hw] = ax_spd.lines[-1]
+                    hardware_handles_thr[hw] = line_thr
+                    hardware_handles_spd[hw] = line_spd
+
+        gpu_handles = []
+        gpu_labels = []
+
+        for gpu_name, gpu_throughput in GPU_BASELINES.items():
+            color = HW_COLORS.get(gpu_name, "gray")
+
+            ax_thr.axhline(
+                gpu_throughput,
+                color=color,
+                linestyle=":",
+                linewidth=2,
+                alpha=0.7,
+            )
+
+            from matplotlib.lines import Line2D
+
+            gpu_handles.append(Line2D([0], [0], color=color, linestyle=":", linewidth=2))
+            gpu_labels.append(f"{gpu_name.upper()} baseline ({gpu_throughput:.1f} Mcells/s)")
 
         ideal_threads = sorted(dscale["threads"].unique())
-
         ax_spd.plot(
-            ideal_threads,
-            ideal_threads,
-            linestyle="--",
-            color="black",
-            linewidth=1,
+            ideal_threads, ideal_threads, linestyle="--", color="black", linewidth=1, label="ideal"
         )
 
-        legend1_thr = ax_thr.legend(
+        legend_hw_thr = ax_thr.legend(
             hardware_handles_thr.values(),
             [hw_label_speedup(hw) for hw in hardware_handles_thr.keys()],
-            bbox_to_anchor=(0.7, 0.3),
-            loc="best",
-            fontsize=8,
-            title="Hardware",
+            loc="upper right",
+            fontsize=FONT_SIZE,
+            # title="Hardware",
         )
 
-        ax_thr.add_artist(legend1_thr)
+        ax_thr.add_artist(legend_hw_thr)
 
-        (scalar_proxy_thr,) = ax_thr.plot([], [], "-", color="black")
-        (vector_proxy_thr,) = ax_thr.plot([], [], "--", color="black")
+        legend_gpu_basline = ax_thr.legend(
+            handles=gpu_handles,
+            labels=gpu_labels,
+            loc="lower right",
+            fontsize=FONT_SIZE,
+            title="GPU baselines",
+        )
+
+        ax_thr.add_artist(legend_gpu_basline)
+
+        (scalar_proxy,) = ax_thr.plot([], [], "-", color="black")
+        (vector_proxy,) = ax_thr.plot([], [], "--", color="black")
 
         ax_thr.legend(
-            [scalar_proxy_thr, vector_proxy_thr],
+            [scalar_proxy, vector_proxy],
             ["scalar", "vectorized"],
-            loc="upper left",
-            bbox_to_anchor=(0.0, 1.0),
-            fontsize=8,
+            loc="lower center",
+            fontsize=FONT_SIZE,
             title="Kernel",
         )
 
-        legend1_spd = ax_spd.legend(
+        legend_hw_spd = ax_spd.legend(
             hardware_handles_spd.values(),
             [hw_label_speedup(hw) for hw in hardware_handles_spd.keys()],
-            bbox_to_anchor=(0.7, 0.3),
-            loc="best",
-            fontsize=8,
-            title="Hardware",
+            loc="upper left",
+            fontsize=FONT_SIZE,
+            # title="Hardware",
         )
+        ax_spd.add_artist(legend_hw_spd)
 
-        ax_spd.add_artist(legend1_spd)
-
-        (scalar_proxy_spd,) = ax_spd.plot([], [], "-", color="black")
-        (vector_proxy_spd,) = ax_spd.plot([], [], "--", color="black")
+        (scalar_proxy_s,) = ax_spd.plot([], [], "-", color="black")
+        (vector_proxy_s,) = ax_spd.plot([], [], "--", color="black")
 
         ax_spd.legend(
-            [scalar_proxy_spd, vector_proxy_spd],
+            [scalar_proxy_s, vector_proxy_s],
             ["scalar", "vectorized"],
-            loc="upper left",
-            bbox_to_anchor=(0.0, 1.0),
-            fontsize=8,
+            loc="lower right",
+            fontsize=FONT_SIZE,
             title="Kernel",
         )
 
-        ax_thr.set_xscale("log")
+        ax_thr.set_yscale("log", base=LOG_BASE_Y)
+        ax_thr.set_xscale("log", base=LOG_BASE_X)
         ax_thr.set_xlabel("OpenMP threads")
         ax_thr.set_ylabel("Million cells / second")
-        ax_thr.set_title(f"{title} {scaling.capitalize()} Scaling Throughput".strip())
+        ax_thr.set_title(
+            f"{title} {scaling.capitalize()} Scaling Throughput (nx=256, nt=100)".strip()
+        )
         ax_thr.grid(True, which="both", linestyle="--", alpha=0.5)
 
-        ax_spd.set_xscale("log")
-        ax_spd.set_yscale("log")
+        ax_spd.set_xscale("log", base=LOG_BASE_X)
+        ax_spd.set_yscale("log", base=LOG_BASE_Y)
         ax_spd.set_xlabel("OpenMP threads")
         ax_spd.set_ylabel("Speedup")
-        ax_spd.set_title(f"{title} {scaling.capitalize()} Scaling Speedup".strip())
+        ax_spd.set_title(f"{title} {scaling.capitalize()} Scaling Speedup (nx=256, nt=100)".strip())
         ax_spd.grid(True, which="both", linestyle="--", alpha=0.5)
 
         plt.tight_layout()
-        # plt.show()
-        plt.savefig(out_dir / f"{scaling}_scaling.png", dpi=200)
+
+        if SAVE_PLOTS:
+            plt.savefig(out_dir / f"{scaling}_scaling.png", dpi=DPI_SIZE)
+        else:
+            plt.show()
+
         plt.close()
 
 
