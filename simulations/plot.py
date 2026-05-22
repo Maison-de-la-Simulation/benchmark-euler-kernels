@@ -137,9 +137,10 @@ import matplotlib.pyplot as plt
 HW_COLORS = {
     "skx": "C0",
     "genoa": "C1",
-    "mi300": "C2",
+    "mi300a": "C2",
     "gh200": "C3",
     "a100": "C4",
+    "mi250": "C5",
     "unknown": "gray",
 }
 SIMD_WIDTH = {
@@ -154,6 +155,7 @@ HW_LABELS = {
     "mi300": "MI300A (APU)",
     "gh200": "GH200 ARM (CPU)",
     "a100": "NVIDIA A100 (GPU)",
+    "mi250": "MI250X (GPU)",
     "unknown": "Unknown",
 }
 
@@ -162,7 +164,7 @@ HW_LABELS = {
 
 def get_hw(path):
     name = Path(path).name.lower()
-    for tag in ["skx", "genoa", "mi300", "gh200", "a100"]:
+    for tag in ["skx", "genoa", "mi300", "gh200", "a100", "mi250"]:
         if tag in name:
             return tag
     return "unknown"
@@ -197,8 +199,11 @@ def plot_hw_speedup(res_dir, out_dir):
     if not files:
         raise FileNotFoundError(f"No JSON files in {res_dir}")
 
+    # ----------------------------
     # load
+    # ----------------------------
     data = []
+
     for f in files:
         df, _ = load_one(str(f))
         df["hardware"] = get_hw(f)
@@ -206,37 +211,51 @@ def plot_hw_speedup(res_dir, out_dir):
 
     df = pd.concat(data, ignore_index=True)
 
-    bases = {b.replace("Vectorized", "") for b in df["benchmark"].unique()}
+    BASES = ["Godunov", "EulerSimulation"]
 
-    for base in bases:
+    for base in BASES:
 
         fig, ax = plt.subplots(figsize=(8, 5))
+
         metric = "bytes_per_second" if base != "EulerSimulation" else "real_time_ns"
 
+        vector_name = f"{base}Vectorized"
+        opti_name = f"{base}Opti"
+
         for hw in df["hardware"].unique():
+            print("hw = ", hw)
 
             d = df[df["hardware"] == hw]
 
-            scalar = d[d["benchmark"] == base].sort_values("size")
-            vector = d[d["benchmark"] == base + "Vectorized"].sort_values("size")
+            opti = d[d["benchmark"] == opti_name].sort_values("size")
+            vector = d[d["benchmark"] == vector_name].sort_values("size")
 
-            if scalar.empty or vector.empty:
+            if opti.empty or vector.empty:
                 continue
 
             merged = pd.merge(
-                scalar[["size", metric]],
+                opti[["size", metric]],
                 vector[["size", metric]],
                 on="size",
-                suffixes=("_scalar", "_vector"),
+                suffixes=("_opti", "_vector"),
             )
 
             if merged.empty:
                 continue
 
+            # ---------------------------------
+            # speedup
+            # ---------------------------------
+
             if metric == "bytes_per_second":
-                speedup = merged[f"{metric}_vector"] / merged[f"{metric}_scalar"]
+
+                # higher bandwidth is better
+                speedup = merged[f"{metric}_vector"] / merged[f"{metric}_opti"]
+
             else:
-                speedup = merged[f"{metric}_scalar"] / merged[f"{metric}_vector"]
+
+                # lower runtime is better
+                speedup = merged[f"{metric}_opti"] / merged[f"{metric}_vector"]
 
             label = hw_label_speedup(hw)
 
@@ -246,17 +265,29 @@ def plot_hw_speedup(res_dir, out_dir):
                 color=HW_COLORS.get(hw, "black"),
                 label=label,
                 marker="o",
-                markersize=3,  # ← controls point size
+                markersize=3,
                 alpha=0.7,
             )
 
-        ax.axhline(1.0, color="black", linestyle="--", linewidth=1)
+        ax.axhline(
+            1.0,
+            color="black",
+            linestyle="--",
+            linewidth=1,
+        )
 
         ax.set_title(f"{base} Speedup (Vectorized vs Scalar)")
         ax.set_xlabel("n (cube width in cells)")
         ax.set_ylabel("Speedup")
-        ax.grid(True, which="both", linestyle="--", alpha=0.5)
 
+        ax.grid(
+            True,
+            which="both",
+            linestyle="--",
+            alpha=0.5,
+        )
+
+        # deduplicate legend
         handles, labels = ax.get_legend_handles_labels()
 
         new_h, new_l = [], []
@@ -270,7 +301,13 @@ def plot_hw_speedup(res_dir, out_dir):
         ax.legend(new_h, new_l, fontsize=8)
 
         plt.tight_layout()
-        plt.savefig(out_dir / f"{base}_speedup.png", dpi=200)
+
+        # plt.show()
+        plt.savefig(
+            out_dir / f"{base}_speedup.png",
+            dpi=200,
+        )
+
         plt.close()
 
 
@@ -296,14 +333,16 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
     df = pd.concat(data, ignore_index=True)
 
     bases = {b.replace("Vectorized", "") for b in df["benchmark"].unique()}
+    BASES = ["Godunov", "EulerSimulation"]
 
-    for base in bases:
+    for base in BASES:
+
+        vector_name = f"{base}Vectorized"
+        opti_name = f"{base}Opti"
 
         fig, ax_cells = plt.subplots(figsize=(8, 5))
 
-        # EulerSimulation: no bytes axis
         is_euler = base == "EulerSimulation"
-
         ax_bytes = ax_cells.twinx() if not is_euler else None
 
         hardware_handles = {}
@@ -312,20 +351,21 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
 
             d = df[df["hardware"] == hw]
 
-            scalar = d[d["benchmark"] == base].sort_values("size")
-            vector = d[d["benchmark"] == base + "Vectorized"].sort_values("size")
+            opti = d[d["benchmark"] == opti_name].sort_values("size")
+            vector = d[d["benchmark"] == vector_name].sort_values("size")
 
-            if scalar.empty or vector.empty:
+            if opti.empty or vector.empty:
                 continue
 
             color = HW_COLORS.get(hw, "black")
 
-            # ----------------------------
-            # LEFT AXIS (cells/s only)
-            # ----------------------------
+            # ---------------------------------
+            # cells/s
+            # ---------------------------------
+
             _plot_series(
                 ax_cells,
-                scalar,
+                opti,
                 color,
                 "_nolegend_",
                 "cells_per_second",
@@ -339,21 +379,24 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
                 "cells_per_second",
             )
 
+            # solid = opti
             ax_cells.lines[-2].set_linestyle("-")
+
+            # dashed = vectorized
             ax_cells.lines[-1].set_linestyle("--")
 
-            # store one representative handle per HW
             if hw not in hardware_handles:
                 hardware_handles[hw] = ax_cells.lines[-2]
 
-            # ----------------------------
-            # RIGHT AXIS (bytes/s only for non-Euler)
-            # ----------------------------
+            # ---------------------------------
+            # bytes/s
+            # ---------------------------------
+
             if not is_euler and ax_bytes is not None:
 
                 _plot_series(
                     ax_bytes,
-                    scalar,
+                    opti,
                     color,
                     "_nolegend_",
                     "bytes_per_second",
@@ -370,9 +413,10 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
                 ax_bytes.lines[-2].set_linestyle("-")
                 ax_bytes.lines[-1].set_linestyle("--")
 
-        # ----------------------------
-        # LEGEND 1: hardware
-        # ----------------------------
+        # ---------------------------------
+        # legends
+        # ---------------------------------
+
         legend1 = ax_cells.legend(
             hardware_handles.values(),
             [hw_label_speedup(hw) for hw in hardware_handles.keys()],
@@ -384,24 +428,22 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
 
         ax_cells.add_artist(legend1)
 
-        # ----------------------------
-        # LEGEND 2: scalar/vector mode
-        # ----------------------------
-        (scalar_proxy,) = ax_cells.plot([], [], "-", color="black")
+        (opti_proxy,) = ax_cells.plot([], [], "-", color="black")
         (vector_proxy,) = ax_cells.plot([], [], "--", color="black")
 
         ax_cells.legend(
-            [scalar_proxy, vector_proxy],
-            ["scalar", "vector"],
+            [opti_proxy, vector_proxy],
+            ["scalar", "vectorized"],
             loc="upper left",
             bbox_to_anchor=(0.0, 1.0),
             fontsize=8,
-            title="Mode",
+            title="Kernel",
         )
 
-        # ----------------------------
+        # ---------------------------------
         # formatting
-        # ----------------------------
+        # ---------------------------------
+
         ax_cells.set_yscale("log")
         ax_cells.set_ylabel("cells per second")
 
@@ -414,6 +456,7 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
         ax_cells.grid(True)
 
         plt.tight_layout()
+        # plt.show()
 
         plt.savefig(
             out_dir / f"{base}_hw_compare.png",
@@ -422,84 +465,196 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
 
         plt.close()
 
-import os 
-def plot_scaling_dir(path):
-    files = sorted([f for f in os.listdir(path) if f.endswith(".csv")])
 
-    strong_scalar = None
-    strong_vector = None
-    weak_scalar = None
-    weak_vector = None
+import os
+
+
+def plot_scaling_dir(res_dir, out_dir, title=""):
+
+    res_dir = Path(res_dir)
+    out_dir = Path(out_dir)
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    files = sorted(res_dir.glob("*.csv"))
+
+    if not files:
+        raise FileNotFoundError(f"No CSV files found in {res_dir}")
+
+    # ------------------------------------------------------------
+    # load all csvs
+    # ------------------------------------------------------------
+
+    data = []
 
     for f in files:
-        full = os.path.join(path, f)
 
-        if "strong" in f and "scalar" in f:
-            strong_scalar = pd.read_csv(full)
-        elif "strong" in f and "vector" in f:
-            strong_vector = pd.read_csv(full)
-        elif "weak" in f and "scalar" in f:
-            weak_scalar = pd.read_csv(full)
-        elif "weak" in f and "vector" in f:
-            weak_vector = pd.read_csv(full)
+        df = pd.read_csv(f)
 
-    def plot_strong(df, ax, title):
-        t = df["threads"].to_numpy()
-        time = df["time_s"].to_numpy()
+        hw = get_hw(f)
 
-        speedup = time[0] / time
-        eff = 100 * speedup / t
+        mode = "vector" if "vector" in f.stem.lower() else "scalar"
 
-        ax.plot(t, speedup, marker="o", label="speedup")
-        ax.plot(t, t, "--", label="ideal")
+        df["hardware"] = hw
+        df["kernel_mode"] = mode
 
-        ax.set_xscale("log", base=2)
-        ax.set_xlabel("Threads")
-        ax.set_ylabel("Speedup")
-        ax.set_title(title)
-        ax.grid(True)
+        data.append(df)
 
-        ax2 = ax.twinx()
-        ax2.plot(t, eff, marker="s", linestyle=":", label="efficiency")
-        ax2.set_ylabel("Efficiency (%)")
+    df = pd.concat(data, ignore_index=True)
 
-        l1, lab1 = ax.get_legend_handles_labels()
-        l2, lab2 = ax2.get_legend_handles_labels()
-        ax.legend(l1 + l2, lab1 + lab2, loc="upper left")
+    # ------------------------------------------------------------
+    # one figure per scaling mode
+    # ------------------------------------------------------------
 
-    def plot_weak(df, ax, title):
-        t = df["threads"].to_numpy()
-        time = df["time_s"].to_numpy()
+    for scaling in sorted(df["mode"].unique()):
 
-        norm = time / time[0]
+        dscale = df[df["mode"] == scaling]
 
-        ax.plot(t, norm, marker="o", label="runtime normalized")
-        ax.plot(t, t, "--", label="ideal weak scaling")
+        # ========================================================
+        # THROUGHPUT + SPEEDUP
+        # ========================================================
 
-        ax.set_xscale("log", base=2)
-        ax.set_xlabel("Threads")
-        ax.set_ylabel("T / T1")
-        ax.set_title(title)
-        ax.grid(True)
-        ax.legend()
+        fig, (ax_thr, ax_spd) = plt.subplots(
+            1,
+            2,
+            figsize=(14, 5),
+        )
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 9))
+        for hw in sorted(dscale["hardware"].unique()):
 
-    if strong_scalar is not None:
-        plot_strong(strong_scalar, axes[0, 0], "Strong Scalar")
+            dhw = dscale[dscale["hardware"] == hw]
 
-    if strong_vector is not None:
-        plot_strong(strong_vector, axes[0, 1], "Strong Vector")
+            for kernel_mode, linestyle in [
+                ("scalar", "-"),
+                ("vector", "--"),
+            ]:
 
-    if weak_scalar is not None:
-        plot_weak(weak_scalar, axes[1, 0], "Weak Scalar")
+                dk = dhw[dhw["kernel_mode"] == kernel_mode]
 
-    if weak_vector is not None:
-        plot_weak(weak_vector, axes[1, 1], "Weak Vector")
+                if dk.empty:
+                    continue
 
-    plt.tight_layout()
-    plt.show()
+                dk = dk.sort_values("threads")
 
-plot_scaling_dir("./results/scaling/genoa/")
-# plot_hw_scalar_vector("./results", "./results/test_polts/")
-# plot_hw_speedup("./results", "./results/test_polts/")
+                label = f"{hw_label_speedup(hw)} ({kernel_mode})"
+
+                # ====================================================
+                # THROUGHPUT
+                # ====================================================
+
+                ax_thr.plot(
+                    dk["threads"],
+                    dk["mcells_s"],
+                    marker="o",
+                    markersize=4,
+                    linestyle=linestyle,
+                    color=HW_COLORS.get(hw, "black"),
+                    label=label,
+                    alpha=0.8,
+                )
+
+                # ====================================================
+                # SPEEDUP
+                # ====================================================
+
+                baseline = dk.iloc[0]["time_s"]
+
+                speedup = baseline / dk["time_s"]
+
+                ax_spd.plot(
+                    dk["threads"],
+                    speedup,
+                    marker="o",
+                    markersize=4,
+                    linestyle=linestyle,
+                    color=HW_COLORS.get(hw, "black"),
+                    label=label,
+                    alpha=0.8,
+                )
+
+        # ========================================================
+        # IDEAL SPEEDUP
+        # ========================================================
+
+        ideal_threads = sorted(dscale["threads"].unique())
+
+        ax_spd.plot(
+            ideal_threads,
+            ideal_threads,
+            linestyle="--",
+            color="black",
+            linewidth=1,
+            label="ideal",
+        )
+
+        # ========================================================
+        # THROUGHPUT FORMAT
+        # ========================================================
+
+        ax_thr.set_xscale("log")
+        # ax_thr.set_yscale("log")
+
+        ax_thr.set_xlabel("OpenMP threads")
+        ax_thr.set_ylabel("Million cells / second")
+
+        ax_thr.set_title(f"{title} {scaling.capitalize()} Scaling Throughput".strip())
+
+        ax_thr.grid(True, which="both", linestyle="--", alpha=0.5)
+
+        # ========================================================
+        # SPEEDUP FORMAT
+        # ========================================================
+
+        ax_spd.set_xscale("log")
+        ax_spd.set_yscale("log")
+
+        ax_spd.set_xlabel("OpenMP threads")
+        ax_spd.set_ylabel("Speedup")
+
+        ax_spd.set_title(f"{title} {scaling.capitalize()} Scaling Speedup".strip())
+
+        ax_spd.grid(True, which="both", linestyle="--", alpha=0.5)
+
+        # ========================================================
+        # DEDUP LEGENDS
+        # ========================================================
+
+        handles, labels = ax_thr.get_legend_handles_labels()
+
+        new_h, new_l = [], []
+
+        for h, l in zip(handles, labels):
+
+            if l not in new_l:
+                new_h.append(h)
+                new_l.append(l)
+
+        ax_thr.legend(new_h, new_l, fontsize=8)
+
+        handles, labels = ax_spd.get_legend_handles_labels()
+
+        new_h, new_l = [], []
+
+        for h, l in zip(handles, labels):
+
+            if l not in new_l:
+                new_h.append(h)
+                new_l.append(l)
+
+        ax_spd.legend(new_h, new_l, fontsize=8)
+
+        plt.tight_layout()
+
+        plt.show()
+
+        # plt.savefig(
+        #     out_dir / f"{scaling}_scaling.png",
+        #     dpi=200,
+        # )
+
+        plt.close()
+
+
+plot_scaling_dir("./results/opti-godunov/scaling", "./results/opti-godunov/scaling")
+# plot_hw_scalar_vector("./results/opti-godunov", "./results/opti-godunov/plots/")
+# plot_hw_speedup("./results/opti-godunov", "./results/opti-godunov/plots/")
