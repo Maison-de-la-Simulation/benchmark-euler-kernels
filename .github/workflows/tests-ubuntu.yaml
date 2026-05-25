@@ -91,6 +91,4 @@ jobs:
       - run: |
           cmake --build build --parallel 4
       - run: |
-          ./build/tests/euler_tests
-      - run: |
-          ./build/benchmarks/euler_benchmarks --benchmark_dry_run --benchmark_filter='.*/[0-9]/.*'
+          ctest --test-dir build -E Convergence

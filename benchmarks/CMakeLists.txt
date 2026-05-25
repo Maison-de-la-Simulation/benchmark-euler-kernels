@@ -16,3 +16,8 @@ target_sources(
         benchmark_time_step.cpp
         benchmark_utils.cpp
 )
+
+add_test(
+    NAME BenchmarksDryRunSmall.Euler
+    COMMAND euler_benchmarks --benchmark_dry_run --benchmark_filter=.*/[0-9]/.*
+)
