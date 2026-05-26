@@ -171,6 +171,19 @@ void EulerSimulationVectorized(benchmark::State& state)
 
 } // namespace
 
+BENCHMARK(EulerSimulationOpti)
+        ->Name("EulerSimulationOptiStrong")
+        ->UseRealTime()
+        ->Arg(128)
+        ->Arg(256)
+        ->Arg(384);
+BENCHMARK(EulerSimulationVectorized)
+        ->Name("EulerSimulationVectorizedStrong")
+        ->UseRealTime()
+        ->Arg(128)
+        ->Arg(256)
+        ->Arg(384);
+
 BENCHMARK(EulerSimulation)->UseRealTime()->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);
 BENCHMARK(EulerSimulationOpti)->UseRealTime()->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);
 BENCHMARK(EulerSimulationVectorized)->UseRealTime()->DenseRange(8, 31, 8)->DenseRange(32, 320, 32);

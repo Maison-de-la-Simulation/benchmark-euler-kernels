@@ -198,6 +198,14 @@ void GodunovVectorizedWorstRem(benchmark::State& state)
 
 } // namespace
 
+BENCHMARK(GodunovOpti)->Name("GodunovOptiStrong")->UseRealTime()->Arg(128)->Arg(256)->Arg(384);
+BENCHMARK(GodunovVectorized)
+        ->Name("GodunovVectorizedStrong")
+        ->UseRealTime()
+        ->Arg(128)
+        ->Arg(256)
+        ->Arg(384);
+
 BENCHMARK(Godunov)
         ->UseRealTime()
         ->DenseRange(8, 31, 8)
