@@ -133,8 +133,7 @@ import matplotlib.pyplot as plt
 # shared helpers
 # ----------------------------
 
-# SAVE_PLOTS = False
-SAVE_PLOTS = False
+SAVE_PLOTS = True
 FONT_SIZE = 6
 LOG_BASE_Y = 10
 LOG_BASE_X = 2
@@ -170,7 +169,7 @@ GPU_BASELINES = {
     "mi250": 2.42696 * 10**3,
     "mi300": 5.63914 * 10**3,
 }
-DPI_SIZE = 100
+DPI_SIZE = 80
 
 
 def get_hw(path):
@@ -248,8 +247,6 @@ def plot_hw_speedup(res_dir, out_dir):
         hardware_handles = {}
 
         for hw in df["hardware"].unique():
-            print("hw = ", hw)
-
             d = df[df["hardware"] == hw]
 
             opti = d[d["benchmark"] == opti_name].sort_values("size")
@@ -290,6 +287,13 @@ def plot_hw_speedup(res_dir, out_dir):
         ax.axhline(1.0, color="black", linestyle="--", linewidth=1)
 
         ax.set_xscale("log", base=LOG_BASE_X)
+
+        # same tick behavior as plot_hw_scalar_vector
+        tick_df = df[df["size"].apply(lambda x: x > 0 and (x & (x - 1)) == 0)]
+        ax.set_xticks(sorted(tick_df["size"].unique()))
+        ax.get_xaxis().set_major_formatter(plt.ScalarFormatter())
+        ax.get_xaxis().set_minor_formatter(plt.NullFormatter())
+
         ax.set_title(f"{base} Speedup (Vectorized vs Scalar)")
         ax.set_xlabel("n (cube width in cells)")
         ax.set_ylabel("Speedup")
@@ -303,10 +307,12 @@ def plot_hw_speedup(res_dir, out_dir):
         ax.add_artist(legend)
 
         plt.tight_layout()
+
         if SAVE_PLOTS:
             plt.savefig(out_dir / f"{base}_speedup.png", dpi=DPI_SIZE)
         else:
             plt.show()
+
         plt.close()
 
 
@@ -327,7 +333,8 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
 
     df = pd.concat(data, ignore_index=True)
 
-    BASES = ["Godunov", "EulerSimulation"]
+    # BASES = ["Godunov", "EulerSimulation"]
+    BASES = ["EulerSimulation"]
 
     for base in BASES:
         vector_name = f"{base}Vectorized"
@@ -391,6 +398,11 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
 
         ax_cells.set_yscale("log", base=LOG_BASE_Y)
         ax_cells.set_xscale("log", base=LOG_BASE_X)
+
+        df = df[df["size"].apply(lambda x: x > 0 and (x & (x - 1)) == 0)]
+        ax_cells.set_xticks(sorted(df["size"].unique()))
+        ax_cells.get_xaxis().set_major_formatter(plt.ScalarFormatter())
+        ax_cells.get_xaxis().set_minor_formatter(plt.NullFormatter())
         ax_cells.set_ylabel("cells per second")
 
         if not is_euler and ax_bytes is not None:
@@ -410,126 +422,48 @@ def plot_hw_scalar_vector(res_dir, out_dir, title=""):
         plt.close()
 
 
-#  def plot_scaling_dir(res_dir, out_dir, title=""):
-#      res_dir = Path(res_dir)
-#      out_dir = Path(out_dir)
-#      out_dir.mkdir(parents=True, exist_ok=True)
-
-#      files = sorted(res_dir.glob("*.csv"))
-#      if not files:
-#          raise FileNotFoundError(f"No CSV files found in {res_dir}")
-
-#      data = []
-
-#      for f in files:
-#          df = pd.read_csv(f)
-
-#          hw = get_hw(f)
-#          mode = "vector" if "vector" in f.stem.lower() else "scalar"
-
-#          df["hardware"] = hw
-#          df["kernel_mode"] = mode
-#          if hw == "genoa":
-#              data.append(df)
-
-#      df = pd.concat(data, ignore_index=True)
-
-#      def add_genoa_markers(ax, ymax):
-#          # Genoa-specific empirical regime markers
-#          markers = [
-#              (8, "L3 / CCX knee"),
-#              (32, "CCD scaling region"),
-#              (96, "Socket saturation"),
-#              (128, "NUMA crossover"),
-#              (192, "Full node"),
-#          ]
-
-#          for x, label in markers:
-#              ax.axvline(x, linestyle="--", linewidth=1.2, color="gray", alpha=0.6)
-#              ax.text(x, ymax, label, rotation=90, va="top", fontsize=8, alpha=0.7)
-
-#      for scaling in sorted(df["mode"].unique()):
-
-#          dscale = df[df["mode"] == scaling]
-
-#          fig, (ax_thr, ax_spd) = plt.subplots(1, 2, figsize=(14, 5))
-
-#          hardware_handles_thr = {}
-#          hardware_handles_spd = {}
-
-#          for hw in sorted(dscale["hardware"].unique()):
-#              dhw = dscale[dscale["hardware"] == hw]
-#              color = HW_COLORS.get(hw, "black")
-
-#              for kernel_mode, linestyle in [("scalar", "-"), ("vector", "--")]:
-
-#                  dk = dhw[dhw["kernel_mode"] == kernel_mode]
-#                  if dk.empty:
-#                      continue
-
-#                  dk = dk.sort_values("threads")
-#                  iter_avg = dk["nt"].unique()[0]
-
-#                  (line_thr,) = ax_thr.plot(
-#                      dk["threads"],
-#                      dk["mcells_s"] / iter_avg,
-#                      marker="o",
-#                      markersize=4,
-#                      linestyle=linestyle,
-#                      color=color,
-#                      alpha=0.8,
-#                  )
-
-#                  baseline = dk.iloc[0]["time_s"]
-#                  speedup = baseline / dk["time_s"]
-
-#                  (line_spd,) = ax_spd.plot(
-#                      dk["threads"],
-#                      speedup,
-#                      marker="o",
-#                      markersize=4,
-#                      linestyle=linestyle,
-#                      color=color,
-#                      alpha=0.8,
-#                  )
-
-#                  if kernel_mode == "scalar" and hw not in hardware_handles_thr:
-#                      hardware_handles_thr[hw] = line_thr
-#                      hardware_handles_spd[hw] = line_spd
-
-#          ideal_threads = sorted(dscale["threads"].unique())
-#          ax_spd.plot(
-#              ideal_threads, ideal_threads, linestyle="--", color="black", linewidth=1, label="ideal"
-#          )
-
-#          ax_thr.set_yscale("log", base=LOG_BASE_Y)
-#          ax_thr.set_xscale("log", base=LOG_BASE_X)
-#          ax_spd.set_yscale("log", base=LOG_BASE_Y)
-#          ax_spd.set_xscale("log", base=LOG_BASE_X)
-
-#          ax_thr.set_xlabel("OpenMP threads")
-#          ax_thr.set_ylabel("Million cells / second")
-#          ax_spd.set_xlabel("OpenMP threads")
-#          ax_spd.set_ylabel("Speedup")
-
-#          ax_thr.grid(True, which="both", linestyle="--", alpha=0.5)
-#          ax_spd.grid(True, which="both", linestyle="--", alpha=0.5)
-
-#          # --- MARKERS (GENOA) ---
-#          ymax = ax_thr.get_ylim()[1]
-#          add_genoa_markers(ax_thr, ymax)
-
-#          plt.tight_layout()
-
-#          if SAVE_PLOTS:
-#              plt.savefig(out_dir / f"{scaling}_scaling.png", dpi=DPI_SIZE)
-#          else:
-#              plt.show()
-
-#          plt.close()
-
-
 import numpy as np
+
+
+def add_hw_markers(ax, hw, ymax):
+    marker_db = {
+        "genoa": [
+            (8, "CCX / Shared L3"),
+            (24, "CCD"),
+            (96, "1st Socket sat"),
+        ],
+        "gh200": [
+            (72, "1st Socket sat"),
+            (142, "2nd Socket sat"),
+            (184, "3rd Socket sat"),
+        ],
+    }
+
+    if hw not in marker_db:
+        return
+
+    for x, label in marker_db[hw]:
+        ax.axvline(
+            x,
+            linestyle="--",
+            linewidth=1.0,
+            color=HW_COLORS.get(hw, "black"),
+            alpha=0.5,
+        )
+
+        ax.annotate(
+            label,
+            xy=(x, 0),
+            xycoords=("data", "axes fraction"),
+            xytext=(0, 4),  # move just above x-axis
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            rotation=90,
+            fontsize=8,
+            clip_on=False,
+            color=HW_COLORS.get(hw, "black"),
+        )
 
 
 def plot_scaling_dir(res_dir, out_dir, title=""):
@@ -572,7 +506,6 @@ def plot_scaling_dir(res_dir, out_dir, title=""):
 
         fig, ax_thr = plt.subplots(1, 1, figsize=(8, 5))
 
-        ideal_threads = np.array(sorted(dscale["threads"].unique()))
         hardware_handles = {}
 
         # --- MEASURED CURVES ---
@@ -605,11 +538,8 @@ def plot_scaling_dir(res_dir, out_dir, title=""):
         ax_thr.set_yscale("log", base=LOG_BASE_Y)
         ax_thr.set_xscale("log", base=2)
 
-        ideal_threads = [t for t in sorted(dscale["threads"].unique()) if (t & (t - 1)) == 0]
-        ax_thr.set_xticks(ideal_threads)
         ax_thr.get_xaxis().set_major_formatter(plt.ScalarFormatter())
         ax_thr.get_xaxis().set_minor_formatter(plt.NullFormatter())
-        ax_thr.set_xticklabels([str(t) for t in ideal_threads])
 
         ax_thr.set_xlabel("OpenMP threads")
         ax_thr.set_ylabel("Million cells / second")
@@ -617,7 +547,9 @@ def plot_scaling_dir(res_dir, out_dir, title=""):
 
         # --- MARKERS ---
         ymax = ax_thr.get_ylim()[0] + 70
-        add_genoa_markers(ax_thr, ymax)
+        # add_genoa_markers(ax_thr, ymax)
+        for hw in sorted(dscale["hardware"].unique()):
+            add_hw_markers(ax_thr, hw, ymax)
 
         # --- LEGENDS (MATCH SPEEDUP STYLE) ---
         legend1 = ax_thr.legend(
@@ -626,9 +558,17 @@ def plot_scaling_dir(res_dir, out_dir, title=""):
             loc="center right",
             fontsize=FONT_SIZE,
         )
+        (scalar_proxy,) = ax_thr.plot([], [], "-", color="black")
+        (vector_proxy,) = ax_thr.plot([], [], "--", color="black")
+        ax_thr.legend(
+            [scalar_proxy, vector_proxy],
+            ["scalar", "vectorized"],
+            loc="upper left",
+            bbox_to_anchor=(0.0, 1.0),
+            fontsize=FONT_SIZE,
+            title="Kernel",
+        )
         ax_thr.add_artist(legend1)
-
-        ax_thr.legend(loc="upper left", fontsize=FONT_SIZE)
 
         plt.tight_layout()
 
@@ -641,5 +581,5 @@ def plot_scaling_dir(res_dir, out_dir, title=""):
 
 
 plot_scaling_dir("./results/opti-godunov/scaling", "./results/opti-godunov/plots/")
-# plot_hw_scalar_vector("./results/opti-godunov", "./results/opti-godunov/plots/")
-# plot_hw_speedup("./results/opti-godunov", "./results/opti-godunov/plots/")
+plot_hw_scalar_vector("./results/opti-godunov", "./results/opti-godunov/plots/")
+plot_hw_speedup("./results/opti-godunov", "./results/opti-godunov/plots/")
