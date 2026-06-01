@@ -112,8 +112,8 @@ void godunov_opti(
     T const dtodv = dt / mesh.dv();
 
     Kokkos::layout_left::mapping const common_mapping = prim_arrays.d.mapping();
-    IndexType const stride_y = prim_arrays.d.extent(0);
-    IndexType const stride_z = prim_arrays.d.extent(0) * prim_arrays.d.extent(1);
+    IndexType const stride_1 = prim_arrays.d.extent(0);
+    IndexType const stride_2 = prim_arrays.d.extent(0) * prim_arrays.d.extent(1);
 
     EulerPrimArrays const prim_ptrs = data_handle(prim_arrays);
     EulerConsArrays const cons_ptrs = data_handle(cons_arrays);
@@ -145,8 +145,8 @@ void godunov_opti(
                     flux.mx2 += ds[0] * (flux_R.mx2 - flux_L.mx2);
                 }
                 {
-                    EulerPrim const prim_L = load(prim_ptrs, base - stride_y);
-                    EulerPrim const prim_R = load(prim_ptrs, base + stride_y);
+                    EulerPrim const prim_L = load(prim_ptrs, base - stride_1);
+                    EulerPrim const prim_R = load(prim_ptrs, base + stride_1);
                     EulerFlux const flux_L = riemann_solver(dir_t<1>(), eos, prim_L, prim);
                     EulerFlux const flux_R = riemann_solver(dir_t<1>(), eos, prim, prim_R);
                     flux.d += ds[1] * (flux_R.d - flux_L.d);
@@ -156,8 +156,8 @@ void godunov_opti(
                     flux.mx2 += ds[1] * (flux_R.mx2 - flux_L.mx2);
                 }
                 {
-                    EulerPrim const prim_L = load(prim_ptrs, base - stride_z);
-                    EulerPrim const prim_R = load(prim_ptrs, base + stride_z);
+                    EulerPrim const prim_L = load(prim_ptrs, base - stride_2);
+                    EulerPrim const prim_R = load(prim_ptrs, base + stride_2);
                     EulerFlux const flux_L = riemann_solver(dir_t<2>(), eos, prim_L, prim);
                     EulerFlux const flux_R = riemann_solver(dir_t<2>(), eos, prim, prim_R);
                     flux.d += ds[2] * (flux_R.d - flux_L.d);
