@@ -57,7 +57,6 @@ void godunov(
                     flux.mx1 += ds[0] * (flux_R.mx1 - flux_L.mx1);
                     flux.mx2 += ds[0] * (flux_R.mx2 - flux_L.mx2);
                 }
-
                 {
                     EulerPrim const prim_L = load(prim_arrays, i, j - 1, k);
                     EulerPrim const prim_R = load(prim_arrays, i, j + 1, k);
@@ -69,7 +68,6 @@ void godunov(
                     flux.mx1 += ds[1] * (flux_R.mx1 - flux_L.mx1);
                     flux.mx2 += ds[1] * (flux_R.mx2 - flux_L.mx2);
                 }
-
                 {
                     EulerPrim const prim_L = load(prim_arrays, i, j, k - 1);
                     EulerPrim const prim_R = load(prim_arrays, i, j, k + 1);
