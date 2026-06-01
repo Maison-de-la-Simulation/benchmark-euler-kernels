@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <span>
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ReductionIdentity.hpp>
