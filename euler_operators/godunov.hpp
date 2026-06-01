@@ -295,7 +295,7 @@ void godunov_vec(
     Kokkos::full_extent_t const slice1;
     Kokkos::full_extent_t const slice2;
     {
-        Kokkos::pair const slice0(0, vec_end);
+        Kokkos::pair const slice0(n0_begin, vec_end);
         EulerPrimArrays const sub_prim_arrays = subspan(prim_arrays, slice0, slice1, slice2);
         EulerConsArrays const sub_cons_arrays = subspan(cons_arrays, slice0, slice1, slice2);
         godunov_kernel<simd_t>(
@@ -309,7 +309,7 @@ void godunov_vec(
     }
 
     if (vec_end < n0_end) {
-        Kokkos::pair const slice0(vec_end, n0);
+        Kokkos::pair const slice0(vec_end, n0_end);
         EulerPrimArrays const sub_prim_arrays = subspan(prim_arrays, slice0, slice1, slice2);
         EulerConsArrays const sub_cons_arrays = subspan(cons_arrays, slice0, slice1, slice2);
 
