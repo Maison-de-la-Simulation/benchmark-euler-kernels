@@ -183,20 +183,19 @@ void godunov_kernel(
         EulerPrimArrays<Kokkos::mdspan<
                 T const,
                 Kokkos::extents<IndexType, E0, E1, E2>,
-                Kokkos::layout_left>> const& prim_arrays,
+                Kokkos::Experimental::layout_left_padded<std::dynamic_extent>>> const& prim_arrays,
         EulerConsArrays<Kokkos::mdspan<
                 T,
                 Kokkos::extents<IndexType, E0, E1, E2>,
-                Kokkos::layout_left>> const& cons_arrays,
-        IndexType n0_begin,
-        IndexType n0_end,
+                Kokkos::Experimental::layout_left_padded<std::dynamic_extent>>> const& cons_arrays,
+
         PerfectGas<T> const& eos,
         UniformMesh3d<T> const& mesh,
         hllc const& riemann_solver,
         T const dt)
 {
     constexpr IndexType width = SimdType::size();
-    IndexType const n0_blocks = (n0_end - n0_begin) / width;
+    IndexType const n0_blocks = prim_arrays.d.extent(0) / width;
     IndexType const n1 = prim_arrays.d.extent(1);
     IndexType const n2 = prim_arrays.d.extent(2);
 
@@ -207,7 +206,7 @@ void godunov_kernel(
     Kokkos::Array<T, 3> const ds = {mesh.ds0(), mesh.ds1(), mesh.ds2()};
     T const dtodv = dt / mesh.dv();
 
-    Kokkos::layout_left::mapping const common_mapping = prim_arrays.d.mapping();
+    auto const common_mapping = prim_arrays.d.mapping();
     EulerPrimArrays const prim_ptrs = data_handle(prim_arrays);
     EulerConsArrays const cons_ptrs = data_handle(cons_arrays);
 
@@ -215,12 +214,10 @@ void godunov_kernel(
             "godunov_kernel",
             Kokkos::MDRangePolicy<
                     Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
-                    Kokkos::IndexType<IndexType>>(
-                    exec_space,
-                    {0, 1, 1},
-                    {n0_blocks, n1 - 1, n2 - 1}), // n0_begin already acouting for ghost cells
+                    Kokkos::IndexType<
+                            IndexType>>(exec_space, {0, 1, 1}, {n0_blocks, n1 - 1, n2 - 1}),
             KOKKOS_LAMBDA(IndexType const bi, IndexType const j, IndexType const k) {
-                IndexType const base = common_mapping(n0_begin + (bi * width), j, k);
+                IndexType const base = common_mapping((bi * width), j, k);
                 EulerPrim<SimdType> const prim = load<SimdType>(prim_ptrs, base);
                 EulerFlux<SimdType> flux {};
 
@@ -295,24 +292,31 @@ void godunov_vec(
     IndexType const vec_end = n0_begin + ((n0_inner / simd_t::size()) * simd_t::size());
     IndexType const n0_end = n0 - 1;
 
-    godunov_kernel<simd_t>(
-            exec_space,
-            prim_arrays,
-            cons_arrays,
-            n0_begin,
-            vec_end,
-            eos,
-            mesh,
-            riemann_solver,
-            dt);
+    Kokkos::full_extent_t const slice1;
+    Kokkos::full_extent_t const slice2;
+    {
+        Kokkos::pair const slice0(0, vec_end);
+        EulerPrimArrays const sub_prim_arrays = subspan(prim_arrays, slice0, slice1, slice2);
+        EulerConsArrays const sub_cons_arrays = subspan(cons_arrays, slice0, slice1, slice2);
+        godunov_kernel<simd_t>(
+                exec_space,
+                sub_prim_arrays,
+                sub_cons_arrays,
+                eos,
+                mesh,
+                riemann_solver,
+                dt);
+    }
 
     if (vec_end < n0_end) {
+        Kokkos::pair const slice0(vec_end, n0);
+        EulerPrimArrays const sub_prim_arrays = subspan(prim_arrays, slice0, slice1, slice2);
+        EulerConsArrays const sub_cons_arrays = subspan(cons_arrays, slice0, slice1, slice2);
+
         godunov_kernel<simd_scalar_t>(
                 exec_space,
-                prim_arrays,
-                cons_arrays,
-                vec_end,
-                n0_end,
+                sub_prim_arrays,
+                sub_cons_arrays,
                 eos,
                 mesh,
                 riemann_solver,
