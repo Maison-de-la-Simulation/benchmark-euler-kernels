@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <span>
 #include <type_traits>
 
 #include <Kokkos_Core.hpp>
