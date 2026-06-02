@@ -198,14 +198,12 @@ void godunov_kernel(
     IndexType const n1 = prim_arrays.d.extent(1);
     IndexType const n2 = prim_arrays.d.extent(2);
 
-    // layout_left strides: stride in y = extent(0), stride in z = extent(0)*extent(1)
-    IndexType const stride_1 = prim_arrays.d.extent(0);
-    IndexType const stride_2 = prim_arrays.d.extent(0) * prim_arrays.d.extent(1);
-
     Kokkos::Array<T, 3> const ds = {mesh.ds0(), mesh.ds1(), mesh.ds2()};
     T const dtodv = dt / mesh.dv();
 
     auto const common_mapping = prim_arrays.d.mapping();
+    IndexType const stride_1 = common_mapping.stride(1);
+    IndexType const stride_2 = common_mapping.stride(2);
     EulerPrimArrays const prim_ptrs = data_handle(prim_arrays);
     EulerConsArrays const cons_ptrs = data_handle(cons_arrays);
 
