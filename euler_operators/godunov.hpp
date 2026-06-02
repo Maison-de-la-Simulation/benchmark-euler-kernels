@@ -194,7 +194,9 @@ void godunov_kernel(
         T const dt)
 {
     constexpr IndexType width = SimdType::size();
-    IndexType const n0_blocks = prim_arrays.d.extent(0) / width;
+
+    // do not include most left and right neighbors in loop
+    IndexType const n0_blocks = (prim_arrays.d.extent(0) - 2) / width;
     IndexType const n1 = prim_arrays.d.extent(1);
     IndexType const n2 = prim_arrays.d.extent(2);
 
@@ -212,7 +214,7 @@ void godunov_kernel(
             Kokkos::MDRangePolicy<
                     Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
                     Kokkos::IndexType<
-                            IndexType>>(exec_space, {0, 1, 1}, {n0_blocks, n1 - 1, n2 - 1}),
+                            IndexType>>(exec_space, {1, 1, 1}, {n0_blocks, n1 - 1, n2 - 1}),
             KOKKOS_LAMBDA(IndexType const bi, IndexType const j, IndexType const k) {
                 IndexType const base = common_mapping((bi * width), j, k);
                 EulerPrim<SimdType> const prim = load<SimdType>(prim_ptrs, base);
@@ -287,12 +289,13 @@ void godunov_vec(
     IndexType const n0_begin = 1;
     IndexType const n0_inner = n0 - 2; // number of interior cells
     IndexType const vec_end = n0_begin + ((n0_inner / simd_t::size()) * simd_t::size());
+
     IndexType const n0_end = n0 - 1;
 
     Kokkos::full_extent_t const slice1;
     Kokkos::full_extent_t const slice2;
     {
-        Kokkos::pair const slice0(n0_begin, vec_end);
+        Kokkos::pair const slice0(0, vec_end + 1); // include right most neighbor
         EulerPrimArrays const sub_prim_arrays = subspan(prim_arrays, slice0, slice1, slice2);
         EulerConsArrays const sub_cons_arrays = subspan(cons_arrays, slice0, slice1, slice2);
         godunov_kernel<simd_t>(
@@ -306,7 +309,7 @@ void godunov_vec(
     }
 
     if (vec_end < n0_end) {
-        Kokkos::pair const slice0(vec_end, n0_end);
+        Kokkos::pair const slice0(vec_end - 1, n0); // include left most neighbor
         EulerPrimArrays const sub_prim_arrays = subspan(prim_arrays, slice0, slice1, slice2);
         EulerConsArrays const sub_cons_arrays = subspan(cons_arrays, slice0, slice1, slice2);
 
