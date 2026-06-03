@@ -51,7 +51,7 @@ bool compare_cons(EulerConsArrays<T> const& ref, EulerConsArrays<T> const& vec, 
 }
 
 template <class T>
-EulerConsArrays<T> CopyToHost(EulerConsArrays<T> const& src)
+auto CopyToHost(EulerConsArrays<T> const& src)
 {
     return EulerConsArrays {
             .d = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), src.d),
@@ -62,7 +62,7 @@ EulerConsArrays<T> CopyToHost(EulerConsArrays<T> const& src)
 }
 
 template <class T>
-EulerPrimArrays<T> CopyToHost(EulerPrimArrays<T> const& src)
+auto CopyToHost(EulerPrimArrays<T> const& src)
 {
     return EulerPrimArrays {
             .d = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), src.d),
