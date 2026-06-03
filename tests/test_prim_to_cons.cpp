@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstddef>
 #include <string>
 
@@ -11,69 +12,60 @@
 
 #include "test_utils.hpp"
 
-TEST(PrimToConsRemainder, ScalarVsVectorized)
+TEST(PrimToCons, ScalarVsVectorized)
 {
     using real_t = double;
     using index_t = int;
 
-    int const n = 23;
-
-    Kokkos::DefaultExecutionSpace const exec_space;
+    Kokkos::DefaultExecutionSpace const exec;
     PerfectGas<real_t> const eos(1.4);
 
-    auto nn = static_cast<std::size_t>(n);
-    std::size_t const n3 = nn * nn * nn;
+    int const max_n = 33;
+    for (int n = 3; n <= max_n; ++n) {
+        std::size_t const n3 = std::size_t(n) * n * n;
 
-    auto prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n3);
-    // --- allocate base ---
-    auto cons_alloc_ref = create_cons_arrays_1d<real_t>(exec_space, n3);
+        auto prims_alloc = create_prim_arrays_1d<real_t>(exec, n3);
 
-    // --- allocate vectorized ---
-    auto cons_alloc_vec = create_cons_arrays_1d<real_t>(exec_space, n3);
+        auto cons_ref_alloc = create_cons_arrays_1d<real_t>(exec, n3);
+        auto cons_vec_alloc = create_cons_arrays_1d<real_t>(exec, n3);
 
-    auto prim_arrays = to_mdspan<Kokkos::mdspan<
-            real_t,
-            Kokkos::dextents<index_t, 3>,
-            Kokkos::layout_left>>(prims_alloc, n, n, n);
+        auto P = to_mdspan<Kokkos::mdspan<
+                real_t,
+                Kokkos::dextents<index_t, 3>,
+                Kokkos::layout_left>>(prims_alloc, n, n, n);
 
-    auto cons_ref = to_mdspan<Kokkos::mdspan<
-            real_t,
-            Kokkos::dextents<index_t, 3>,
-            Kokkos::layout_left>>(cons_alloc_ref, n, n, n);
+        auto U_ref = to_mdspan<Kokkos::mdspan<
+                real_t,
+                Kokkos::dextents<index_t, 3>,
+                Kokkos::layout_left>>(cons_ref_alloc, n, n, n);
 
-    auto cons_vec = to_mdspan<Kokkos::mdspan<
-            real_t,
-            Kokkos::dextents<index_t, 3>,
-            Kokkos::layout_left>>(cons_alloc_vec, n, n, n);
+        auto U_vec = to_mdspan<Kokkos::mdspan<
+                real_t,
+                Kokkos::dextents<index_t, 3>,
+                Kokkos::layout_left>>(cons_vec_alloc, n, n, n);
 
-    // --- initialize with non-trivial state ---
-    EulerPrim<real_t> const prim {.d = 1.0, .p = 1.0, .ux0 = 0.5, .ux1 = -0.3, .ux2 = 0.1};
+        init_ramp_state(exec, P, U_ref, eos);
 
-    init_from_state(exec_space, prim_arrays, prim);
-    exec_space.fence();
+        Kokkos::deep_copy(cons_vec_alloc.d, cons_ref_alloc.d);
+        Kokkos::deep_copy(cons_vec_alloc.e, cons_ref_alloc.e);
+        Kokkos::deep_copy(cons_vec_alloc.mx0, cons_ref_alloc.mx0);
+        Kokkos::deep_copy(cons_vec_alloc.mx1, cons_ref_alloc.mx1);
+        Kokkos::deep_copy(cons_vec_alloc.mx2, cons_ref_alloc.mx2);
 
-    // --- run both ---
-    prim_to_cons(exec_space, as_const(prim_arrays), cons_ref, eos);
-    prim_to_cons_vec(exec_space, as_const(prim_arrays), cons_vec, eos);
-    exec_space.fence();
+        exec.fence();
 
-    auto ref_h = EulerConsArrays {
-            .d = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.d),
-            .e = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.e),
-            .mx0 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.mx0),
-            .mx1 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.mx1),
-            .mx2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_ref.mx2)};
+        prim_to_cons(exec, as_const(P), U_ref, eos);
+        prim_to_cons_vec(exec, as_const(P), U_vec, eos);
 
-    auto vec_h = EulerConsArrays {
-            .d = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.d),
-            .e = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.e),
-            .mx0 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.mx0),
-            .mx1 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.mx1),
-            .mx2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), cons_alloc_vec.mx2)};
+        exec.fence();
 
-    double const tol = 1e-12;
+        auto ref_h = CopyToHost(cons_ref_alloc);
 
-    for (int idx = 0; idx < n * n * n; ++idx) {
-        compare(ref_h, vec_h, tol, idx);
+        auto vec_h = CopyToHost(cons_vec_alloc);
+
+        double const tol = 1e-12;
+        for (int idx = 0; idx < n * n * n; ++idx) {
+            ASSERT_TRUE(compare_cons(ref_h, vec_h, tol, idx)) << "Mismatch at:" << idx << "\n";
+        }
     }
 }
