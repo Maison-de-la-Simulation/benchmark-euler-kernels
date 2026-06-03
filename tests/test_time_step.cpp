@@ -38,6 +38,6 @@ TEST(TimeStep, ScalarVsVectorized)
 
         exec_space.fence();
 
-        ASSERT_NEAR(dt_ref, dt_vec, 1e-12);
+        ASSERT_NEAR(dt_ref, dt_vec, 1e-20);
     }
 }

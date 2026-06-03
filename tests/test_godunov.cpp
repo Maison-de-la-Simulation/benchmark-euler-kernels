@@ -29,7 +29,8 @@ auto run_case_impl(
         double dt,
         Kernel kernel)
 {
-    std::size_t const n3 = std::size_t(n) * n * n;
+    auto nn = static_cast<std::size_t>(n);
+    std::size_t const n3 = nn * nn * nn;
 
     auto prims_alloc = create_prim_arrays_1d<real_t>(exec, n3);
     auto cons_alloc = create_cons_arrays_1d<real_t>(exec, n3);

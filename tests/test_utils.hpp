@@ -115,7 +115,7 @@ void init_ramp_state(
 
                 double const eint = eos.internal_energy(rho, p);
 
-                EulerPrim<double> prim {.d = rho, .p = p, .ux0 = ux0, .ux1 = ux1, .ux2 = ux2};
+                EulerPrim<double> const prim {.d = rho, .p = p, .ux0 = ux0, .ux1 = ux1, .ux2 = ux2};
 
                 EulerCons const cons = to_cons(prim, eint);
 
