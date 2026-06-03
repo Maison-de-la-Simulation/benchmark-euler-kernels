@@ -219,7 +219,7 @@ void godunov_kernel(
                     {n0_blocks, n1 - 1, n2 - 1}), // n0_begin already acouting for ghost cells
             KOKKOS_LAMBDA(IndexType const bi, IndexType const j, IndexType const k) {
                 IndexType const base = common_mapping(n0_begin + (bi * width), j, k);
-                EulerPrim<SimdType> const prim = load<SimdType>(prim_ptrs, base);
+                EulerPrim<SimdType> const prim = load_al<SimdType>(prim_ptrs, base);
                 EulerFlux<SimdType> flux {};
 
                 {
@@ -234,8 +234,8 @@ void godunov_kernel(
                     flux.mx2 += ds[0] * (flux_R.mx2 - flux_L.mx2);
                 }
                 {
-                    EulerPrim const prim_L = load<SimdType>(prim_ptrs, base - stride_1);
-                    EulerPrim const prim_R = load<SimdType>(prim_ptrs, base + stride_1);
+                    EulerPrim const prim_L = load_al<SimdType>(prim_ptrs, base - stride_1);
+                    EulerPrim const prim_R = load_al<SimdType>(prim_ptrs, base + stride_1);
                     EulerFlux const flux_L = riemann_solver(dir_t<1>(), eos, prim_L, prim);
                     EulerFlux const flux_R = riemann_solver(dir_t<1>(), eos, prim, prim_R);
                     flux.d += ds[1] * (flux_R.d - flux_L.d);
@@ -245,8 +245,8 @@ void godunov_kernel(
                     flux.mx2 += ds[1] * (flux_R.mx2 - flux_L.mx2);
                 }
                 {
-                    EulerPrim const prim_L = load<SimdType>(prim_ptrs, base - stride_2);
-                    EulerPrim const prim_R = load<SimdType>(prim_ptrs, base + stride_2);
+                    EulerPrim const prim_L = load_al<SimdType>(prim_ptrs, base - stride_2);
+                    EulerPrim const prim_R = load_al<SimdType>(prim_ptrs, base + stride_2);
                     EulerFlux const flux_L = riemann_solver(dir_t<2>(), eos, prim_L, prim);
                     EulerFlux const flux_R = riemann_solver(dir_t<2>(), eos, prim, prim_R);
                     flux.d += ds[2] * (flux_R.d - flux_L.d);
@@ -256,13 +256,13 @@ void godunov_kernel(
                     flux.mx2 += ds[2] * (flux_R.mx2 - flux_L.mx2);
                 }
 
-                EulerCons cons = load<SimdType>(cons_ptrs, base);
+                EulerCons cons = load_al<SimdType>(cons_ptrs, base);
                 cons.d -= dtodv * flux.d;
                 cons.e -= dtodv * flux.e;
                 cons.mx0 -= dtodv * flux.mx0;
                 cons.mx1 -= dtodv * flux.mx1;
                 cons.mx2 -= dtodv * flux.mx2;
-                store<SimdType>(cons, cons_ptrs, base);
+                store_al<SimdType>(cons, cons_ptrs, base);
             });
 }
 
@@ -281,35 +281,64 @@ void godunov_vec(
         UniformMesh3d<T> const& mesh,
         hllc const& riemann_solver,
         T const dt)
+
 {
     namespace KE = Kokkos::Experimental;
     using simd_t = KE::simd<T>;
     using simd_scalar_t = KE::basic_simd<T, KE::simd_abi::scalar>;
 
-    // interior x-range is [1, n0-1)
+    constexpr IndexType width = simd_t::size();
+    constexpr IndexType simd_bytes = width * sizeof(T);
+
     IndexType const n0 = prim_arrays.d.extent(0);
     IndexType const n0_begin = 1;
-    IndexType const n0_inner = n0 - 2; // number of interior cells
-    IndexType const vec_end = n0_begin + ((n0_inner / simd_t::size()) * simd_t::size());
     IndexType const n0_end = n0 - 1;
+    IndexType const N = n0_end - n0_begin;
 
-    godunov_kernel<simd_t>(
-            exec_space,
-            prim_arrays,
-            cons_arrays,
-            n0_begin,
-            vec_end,
-            eos,
-            mesh,
-            riemann_solver,
-            dt);
+    auto addr = reinterpret_cast<uintptr_t>(&prim_arrays.d(n0_begin, 0, 0));
+    IndexType misalignment = addr % simd_bytes;
+    IndexType prefix = misalignment ? (simd_bytes - misalignment) / sizeof(T) : 0;
+    prefix = std::min(prefix, N);
 
-    if (vec_end < n0_end) {
+    IndexType const n_inner = N - prefix - 1;
+    IndexType const n_simd = (n_inner / width) * width;
+    IndexType const simd_end = prefix + n_simd;
+
+    // scalar prefix
+    if (prefix > 0) {
         godunov_kernel<simd_scalar_t>(
                 exec_space,
                 prim_arrays,
                 cons_arrays,
-                vec_end,
+                n0_begin,
+                n0_begin + prefix,
+                eos,
+                mesh,
+                riemann_solver,
+                dt);
+    }
+
+    // aligned SIMD body
+    if (simd_end > prefix) {
+        godunov_kernel<simd_t>(
+                exec_space,
+                prim_arrays,
+                cons_arrays,
+                n0_begin + prefix,
+                n0_begin + simd_end,
+                eos,
+                mesh,
+                riemann_solver,
+                dt);
+    }
+
+    // scalar remainder
+    if (N > simd_end) {
+        godunov_kernel<simd_scalar_t>(
+                exec_space,
+                prim_arrays,
+                cons_arrays,
+                n0_begin + simd_end,
                 n0_end,
                 eos,
                 mesh,

@@ -194,6 +194,21 @@ KOKKOS_FORCEINLINE_FUNCTION EulerPrim<SimdType> load(
     };
 }
 
+template <class SimdType, class T, class IndexType>
+KOKKOS_FORCEINLINE_FUNCTION EulerPrim<SimdType> load_al(
+        EulerPrimArrays<T*> const& prim_ptrs,
+        IndexType const base) noexcept
+{
+    namespace KE = Kokkos::Experimental;
+    return {
+            .d = SimdType(prim_ptrs.d + base, KE::simd_flag_aligned),
+            .p = SimdType(prim_ptrs.p + base, KE::simd_flag_aligned),
+            .ux0 = SimdType(prim_ptrs.ux0 + base, KE::simd_flag_aligned),
+            .ux1 = SimdType(prim_ptrs.ux1 + base, KE::simd_flag_aligned),
+            .ux2 = SimdType(prim_ptrs.ux2 + base, KE::simd_flag_aligned),
+    };
+}
+
 template <
         class ElementType,
         class IndexType,
@@ -243,6 +258,20 @@ KOKKOS_FORCEINLINE_FUNCTION void store(
     KE::simd_unchecked_store(prim.ux0, prim_ptrs.ux0 + base, KE::simd_flag_default);
     KE::simd_unchecked_store(prim.ux1, prim_ptrs.ux1 + base, KE::simd_flag_default);
     KE::simd_unchecked_store(prim.ux2, prim_ptrs.ux2 + base, KE::simd_flag_default);
+}
+
+template <class SimdType, class ElementType>
+KOKKOS_FORCEINLINE_FUNCTION void store_al(
+        EulerPrim<SimdType> const& prim,
+        EulerPrimArrays<ElementType*> const& prim_ptrs,
+        std::size_t const base) noexcept
+{
+    namespace KE = Kokkos::Experimental;
+    KE::simd_unchecked_store(prim.d, prim_ptrs.d + base, KE::simd_flag_aligned);
+    KE::simd_unchecked_store(prim.p, prim_ptrs.p + base, KE::simd_flag_aligned);
+    KE::simd_unchecked_store(prim.ux0, prim_ptrs.ux0 + base, KE::simd_flag_aligned);
+    KE::simd_unchecked_store(prim.ux1, prim_ptrs.ux1 + base, KE::simd_flag_aligned);
+    KE::simd_unchecked_store(prim.ux2, prim_ptrs.ux2 + base, KE::simd_flag_aligned);
 }
 
 template <class T>
@@ -374,6 +403,21 @@ KOKKOS_FORCEINLINE_FUNCTION EulerCons<SimdType> load(
     };
 }
 
+template <class SimdType, class T, class IndexType>
+KOKKOS_FORCEINLINE_FUNCTION EulerCons<SimdType> load_al(
+        EulerConsArrays<T*> const& cons_ptrs,
+        IndexType const base) noexcept
+{
+    namespace KE = Kokkos::Experimental;
+    return {
+            .d = SimdType(cons_ptrs.d + base, KE::simd_flag_aligned),
+            .e = SimdType(cons_ptrs.e + base, KE::simd_flag_aligned),
+            .mx0 = SimdType(cons_ptrs.mx0 + base, KE::simd_flag_aligned),
+            .mx1 = SimdType(cons_ptrs.mx1 + base, KE::simd_flag_aligned),
+            .mx2 = SimdType(cons_ptrs.mx2 + base, KE::simd_flag_aligned),
+    };
+}
+
 template <
         class ElementType,
         class IndexType,
@@ -413,6 +457,20 @@ KOKKOS_FUNCTION void store(
 
 template <class SimdType, class ElementType>
 KOKKOS_FORCEINLINE_FUNCTION void store(
+        EulerCons<SimdType> const& cons,
+        EulerConsArrays<ElementType*> const& cons_ptrs,
+        std::size_t const base) noexcept
+{
+    namespace KE = Kokkos::Experimental;
+    KE::simd_unchecked_store(cons.d, cons_ptrs.d + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(cons.e, cons_ptrs.e + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(cons.mx0, cons_ptrs.mx0 + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(cons.mx1, cons_ptrs.mx1 + base, KE::simd_flag_default);
+    KE::simd_unchecked_store(cons.mx2, cons_ptrs.mx2 + base, KE::simd_flag_default);
+}
+
+template <class SimdType, class ElementType>
+KOKKOS_FORCEINLINE_FUNCTION void store_al(
         EulerCons<SimdType> const& cons,
         EulerConsArrays<ElementType*> const& cons_ptrs,
         std::size_t const base) noexcept
