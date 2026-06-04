@@ -1,4 +1,3 @@
-#include <cmath>
 #include <cstddef>
 #include <string>
 
@@ -10,9 +9,7 @@
 #include <hllc.hpp>
 #include <perfect_gas.hpp>
 #include <uniform_mesh.hpp>
-#include <utils.hpp>
 
-#include "init_implode.hpp"
 #include "test_utils.hpp"
 
 namespace {
