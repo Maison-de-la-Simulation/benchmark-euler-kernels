@@ -1,4 +1,3 @@
-#include <cmath>
 #include <cstddef>
 #include <string>
 
@@ -8,7 +7,6 @@
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 #include <prim_to_cons.hpp>
-#include <utils.hpp>
 
 #include "test_utils.hpp"
 

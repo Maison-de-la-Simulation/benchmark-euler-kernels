@@ -75,25 +75,25 @@ auto CopyToHost(EulerPrimArrays<T> const& src)
 template <class PrimArrays, class ConsArrays, class EOS>
 void init_ramp_state(
         Kokkos::DefaultExecutionSpace const& exec,
-        PrimArrays const& P,
-        ConsArrays const& U,
+        PrimArrays const& prim_arrays,
+        ConsArrays const& cons_arrays,
         EOS const& eos)
 {
-    auto Pd = P.d;
-    auto Pp = P.p;
-    auto Pux0 = P.ux0;
-    auto Pux1 = P.ux1;
-    auto Pux2 = P.ux2;
+    auto prim_d = prim_arrays.d;
+    auto prim_p = prim_arrays.p;
+    auto prim_ux0 = prim_arrays.ux0;
+    auto prim_ux1 = prim_arrays.ux1;
+    auto prim_ux2 = prim_arrays.ux2;
 
-    auto Ud = U.d;
-    auto Ue = U.e;
-    auto Umx0 = U.mx0;
-    auto Umx1 = U.mx1;
-    auto Umx2 = U.mx2;
+    auto cons_d = cons_arrays.d;
+    auto cons_e = cons_arrays.e;
+    auto cons_mx0 = cons_arrays.mx0;
+    auto cons_mx1 = cons_arrays.mx1;
+    auto cons_mx2 = cons_arrays.mx2;
 
-    int const n0 = P.d.extent(0);
-    int const n1 = P.d.extent(1);
-    int const n2 = P.d.extent(2);
+    int const n0 = prim_arrays.d.extent(0);
+    int const n1 = prim_arrays.d.extent(1);
+    int const n2 = prim_arrays.d.extent(2);
 
     Kokkos::parallel_for(
             "init_ramp_state",
@@ -107,11 +107,11 @@ void init_ramp_state(
                 double const ux1 = -0.2;
                 double const ux2 = 0.1;
 
-                Pd(i, j, k) = rho;
-                Pp(i, j, k) = p;
-                Pux0(i, j, k) = ux0;
-                Pux1(i, j, k) = ux1;
-                Pux2(i, j, k) = ux2;
+                prim_d(i, j, k) = rho;
+                prim_p(i, j, k) = p;
+                prim_ux0(i, j, k) = ux0;
+                prim_ux1(i, j, k) = ux1;
+                prim_ux2(i, j, k) = ux2;
 
                 double const eint = eos.internal_energy(rho, p);
 
@@ -119,11 +119,11 @@ void init_ramp_state(
 
                 EulerCons const cons = to_cons(prim, eint);
 
-                Ud(i, j, k) = cons.d;
-                Ue(i, j, k) = cons.e;
-                Umx0(i, j, k) = cons.mx0;
-                Umx1(i, j, k) = cons.mx1;
-                Umx2(i, j, k) = cons.mx2;
+                cons_d(i, j, k) = cons.d;
+                cons_e(i, j, k) = cons.e;
+                cons_mx0(i, j, k) = cons.mx0;
+                cons_mx1(i, j, k) = cons.mx1;
+                cons_mx2(i, j, k) = cons.mx2;
             });
 
     exec.fence();
