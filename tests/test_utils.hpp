@@ -94,7 +94,7 @@ void init_ramp_state(
     T const d_base = 1.0;
     T const p_base = 1.0;
     T const d_ramp = 0.02;
-    T const p_amp = 0.01;
+    T const p_ramp = 0.01;
 
     Kokkos::parallel_for(
             "init_ramp_state",
@@ -112,10 +112,10 @@ void init_ramp_state(
                 T const xi = x0 + 0.5;
 
                 // use smoothstep cubic Hermite interpolation
-                T const ramp = xi * xi * (3 - 2 * xi); // smoothstep
+                T const ramp = xi * xi * (3 - (2 * xi)); // smoothstep
 
-                T const d = 1.0 + (0.02 * ramp);
-                T const p = 1.0 + (0.01 * ramp);
+                T const d = 1.0 + (d_ramp * ramp);
+                T const p = 1.0 + (p_ramp * ramp);
 
                 EulerPrim<T> const prim {.d = d, .p = p, .ux0 = ux0, .ux1 = ux1, .ux2 = ux2};
 

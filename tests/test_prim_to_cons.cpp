@@ -7,6 +7,7 @@
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 #include <prim_to_cons.hpp>
+#include <uniform_mesh.hpp>
 
 #include "test_utils.hpp"
 
