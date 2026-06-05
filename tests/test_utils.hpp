@@ -84,8 +84,6 @@ void init_ramp_state(
         UniformMesh3d<T> const& mesh)
 {
     T const dx0 = mesh.dx0();
-    T const dx1 = mesh.dx1();
-    T const dx2 = mesh.dx2();
 
     T const ux0 = 0.5;
     T const ux1 = -0.2;
