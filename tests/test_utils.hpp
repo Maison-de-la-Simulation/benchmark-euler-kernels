@@ -91,8 +91,6 @@ void init_ramp_state(
     T const ux1 = -0.2;
     T const ux2 = 0.1;
 
-    T const d_base = 1.0;
-    T const p_base = 1.0;
     T const d_ramp = 0.02;
     T const p_ramp = 0.01;
 
