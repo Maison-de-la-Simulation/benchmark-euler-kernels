@@ -10,6 +10,7 @@
 #include <perfect_gas.hpp>
 #include <uniform_mesh.hpp>
 
+#include "prim_to_cons.hpp"
 #include "test_utils.hpp"
 
 namespace {
@@ -32,19 +33,20 @@ auto run_case_impl(
     auto prims_alloc = create_prim_arrays_1d<real_t>(exec, n3);
     auto cons_alloc = create_cons_arrays_1d<real_t>(exec, n3);
 
-    auto P = to_mdspan<Kokkos::mdspan<
+    auto prim_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
             Kokkos::layout_left>>(prims_alloc, n, n, n);
 
-    auto U = to_mdspan<Kokkos::mdspan<
+    auto cons_arrays = to_mdspan<Kokkos::mdspan<
             real_t,
             Kokkos::dextents<index_t, 3>,
             Kokkos::layout_left>>(cons_alloc, n, n, n);
 
-    init_ramp_state(exec, P, U, eos);
+    init_ramp_state(exec, prim_arrays, mesh);
+    prim_to_cons(exec, as_const(prim_arrays), cons_arrays, eos);
 
-    kernel(exec, as_const(P), U, eos, mesh, hllc {}, dt);
+    kernel(exec, as_const(prim_arrays), cons_arrays, eos, mesh, hllc {}, dt);
 
     exec.fence();
 
@@ -91,14 +93,14 @@ TEST(Godunov, ScalarVsVectorized)
                    auto solver,
                    double dt) { godunov_vec(exec, P, U, eos, mesh, solver, dt); });
 
-        auto ref_h = CopyToHost(ref);
+        auto ref_h = copy_to_host(ref);
 
-        auto vec_h = CopyToHost(vec);
+        auto vec_h = copy_to_host(vec);
 
         double const tol = 1e-12;
 
         for (int idx = 0; idx < n * n * n; ++idx) {
-            ASSERT_TRUE(compare_cons(ref_h, vec_h, tol, idx)) << "Mismatch at idx = " << idx;
+            EXPECT_TRUE(compare(ref_h, vec_h, tol, idx)) << "Mismatch at idx = " << idx;
         }
     }
 }

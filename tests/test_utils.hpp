@@ -6,8 +6,10 @@
 #include <euler_arrays.hpp>
 #include <perfect_gas.hpp>
 
+#include "uniform_mesh.hpp"
+
 template <class T>
-bool compare_prim(EulerPrimArrays<T> const& ref, EulerPrimArrays<T> const& vec, double tol, int idx)
+bool compare(EulerPrimArrays<T> const& ref, EulerPrimArrays<T> const& vec, double tol, int idx)
 {
     if (std::abs(ref.d(idx) - vec.d(idx)) > tol) {
         return false;
@@ -29,7 +31,7 @@ bool compare_prim(EulerPrimArrays<T> const& ref, EulerPrimArrays<T> const& vec, 
 }
 
 template <class T>
-bool compare_cons(EulerConsArrays<T> const& ref, EulerConsArrays<T> const& vec, double tol, int idx)
+bool compare(EulerConsArrays<T> const& ref, EulerConsArrays<T> const& vec, double tol, int idx)
 {
     if (std::abs(ref.d(idx) - vec.d(idx)) > tol) {
         return false;
@@ -51,7 +53,7 @@ bool compare_cons(EulerConsArrays<T> const& ref, EulerConsArrays<T> const& vec, 
 }
 
 template <class T>
-auto CopyToHost(EulerConsArrays<T> const& src)
+auto copy_to_host(EulerConsArrays<T> const& src)
 {
     return EulerConsArrays {
             .d = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), src.d),
@@ -62,7 +64,7 @@ auto CopyToHost(EulerConsArrays<T> const& src)
 }
 
 template <class T>
-auto CopyToHost(EulerPrimArrays<T> const& src)
+auto copy_to_host(EulerPrimArrays<T> const& src)
 {
     return EulerPrimArrays {
             .d = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), src.d),
@@ -72,59 +74,51 @@ auto CopyToHost(EulerPrimArrays<T> const& src)
             .ux2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), src.ux2)};
 }
 
-template <class PrimArrays, class ConsArrays, class EOS>
+template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
 void init_ramp_state(
-        Kokkos::DefaultExecutionSpace const& exec,
-        PrimArrays const& prim_arrays,
-        ConsArrays const& cons_arrays,
-        EOS const& eos)
+        Kokkos::DefaultExecutionSpace const& exec_space,
+        EulerPrimArrays<Kokkos::mdspan<
+                T,
+                Kokkos::extents<IndexType, E0, E1, E2>,
+                Kokkos::layout_left>> const& prim_arrays,
+        UniformMesh3d<T> const& mesh)
 {
-    auto prim_d = prim_arrays.d;
-    auto prim_p = prim_arrays.p;
-    auto prim_ux0 = prim_arrays.ux0;
-    auto prim_ux1 = prim_arrays.ux1;
-    auto prim_ux2 = prim_arrays.ux2;
+    T const dx0 = mesh.dx0();
+    T const dx1 = mesh.dx1();
+    T const dx2 = mesh.dx2();
 
-    auto cons_d = cons_arrays.d;
-    auto cons_e = cons_arrays.e;
-    auto cons_mx0 = cons_arrays.mx0;
-    auto cons_mx1 = cons_arrays.mx1;
-    auto cons_mx2 = cons_arrays.mx2;
+    T const ux0 = 0.5;
+    T const ux1 = -0.2;
+    T const ux2 = 0.1;
 
-    int const n0 = prim_arrays.d.extent(0);
-    int const n1 = prim_arrays.d.extent(1);
-    int const n2 = prim_arrays.d.extent(2);
+    T const d_base = 1.0;
+    T const p_base = 1.0;
+    T const d_ramp = 0.02;
+    T const p_amp = 0.01;
 
     Kokkos::parallel_for(
             "init_ramp_state",
-            Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {n0, n1, n2}),
-            KOKKOS_LAMBDA(int i, int j, int k) {
-                // deterministic smooth variation in x-direction only
-                double const rho = 1.0 + (0.01 * i);
-                double const p = 1.0 + (0.005 * i);
+            Kokkos::MDRangePolicy<
+                    Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
+                    Kokkos::IndexType<IndexType>>(
+                    exec_space,
+                    {0, 0, 0},
+                    {prim_arrays.d.extent(0), prim_arrays.d.extent(1), prim_arrays.d.extent(2)}),
 
-                double const ux0 = 0.5;
-                double const ux1 = -0.2;
-                double const ux2 = 0.1;
+            KOKKOS_LAMBDA(IndexType const i, IndexType const j, IndexType const k) {
+                // map index to physical coordinate
+                T const x0 = (((i + 0.5) * dx0) - 0.5);
+                // map x0 to [0,1]
+                T const xi = x0 + 0.5;
 
-                prim_d(i, j, k) = rho;
-                prim_p(i, j, k) = p;
-                prim_ux0(i, j, k) = ux0;
-                prim_ux1(i, j, k) = ux1;
-                prim_ux2(i, j, k) = ux2;
+                // use smoothstep cubic Hermite interpolation
+                T const ramp = xi * xi * (3 - 2 * xi); // smoothstep
 
-                double const eint = eos.internal_energy(rho, p);
+                T const d = 1.0 + (0.02 * ramp);
+                T const p = 1.0 + (0.01 * ramp);
 
-                EulerPrim<double> const prim {.d = rho, .p = p, .ux0 = ux0, .ux1 = ux1, .ux2 = ux2};
+                EulerPrim<T> const prim {.d = d, .p = p, .ux0 = ux0, .ux1 = ux1, .ux2 = ux2};
 
-                EulerCons const cons = to_cons(prim, eint);
-
-                cons_d(i, j, k) = cons.d;
-                cons_e(i, j, k) = cons.e;
-                cons_mx0(i, j, k) = cons.mx0;
-                cons_mx1(i, j, k) = cons.mx1;
-                cons_mx2(i, j, k) = cons.mx2;
+                store(prim, prim_arrays, i, j, k);
             });
-
-    exec.fence();
 }

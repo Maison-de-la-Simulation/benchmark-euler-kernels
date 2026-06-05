@@ -24,7 +24,11 @@ TEST(ConsToPrim, ScalarVsVectorized)
         std::size_t const n3 = nn * nn * nn;
 
         auto cons_alloc = create_cons_arrays_1d<real_t>(exec_space, n3);
+
+        // --- allocate base ---
         auto prims_alloc_ref = create_prim_arrays_1d<real_t>(exec_space, n3);
+
+        // --- allocate vectorized ---
         auto prims_alloc_vec = create_prim_arrays_1d<real_t>(exec_space, n3);
 
         auto cons_arrays = to_mdspan<Kokkos::mdspan<
@@ -44,18 +48,19 @@ TEST(ConsToPrim, ScalarVsVectorized)
         init_from_state(exec_space, cons_arrays, cons);
         exec_space.fence();
 
+        // --- run both ---
         cons_to_prim(exec_space, as_const(cons_arrays), prim_ref, eos);
         cons_to_prim_vec(exec_space, as_const(cons_arrays), prim_vec, eos);
         exec_space.fence();
 
-        auto ref_h = CopyToHost(prims_alloc_ref);
+        auto ref_h = copy_to_host(prims_alloc_ref);
 
-        auto vec_h = CopyToHost(prims_alloc_vec);
+        auto vec_h = copy_to_host(prims_alloc_vec);
 
         double const tol = 1e-12;
 
         for (int idx = 0; idx < n * n * n; ++idx) {
-            ASSERT_TRUE(compare_prim(ref_h, vec_h, tol, idx)) << "Mismatch at:" << idx << "\n";
+            EXPECT_TRUE(compare(ref_h, vec_h, tol, idx)) << "Mismatch at:" << idx << "\n";
         }
     }
 }
