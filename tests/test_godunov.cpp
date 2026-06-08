@@ -8,9 +8,9 @@
 #include <godunov.hpp>
 #include <hllc.hpp>
 #include <perfect_gas.hpp>
+#include <prim_to_cons.hpp>
 #include <uniform_mesh.hpp>
 
-#include "prim_to_cons.hpp"
 #include "test_utils.hpp"
 
 namespace {
