@@ -190,6 +190,7 @@ void godunov_kernel(
 
         PerfectGas<T> const& eos,
         UniformMesh3d<T> const& mesh,
+
         hllc const& riemann_solver,
         T const dt)
 {
@@ -214,9 +215,9 @@ void godunov_kernel(
             Kokkos::MDRangePolicy<
                     Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
                     Kokkos::IndexType<
-                            IndexType>>(exec_space, {1, 1, 1}, {n0_blocks, n1 - 1, n2 - 1}),
+                            IndexType>>(exec_space, {0, 1, 1}, {n0_blocks, n1 - 1, n2 - 1}),
             KOKKOS_LAMBDA(IndexType const bi, IndexType const j, IndexType const k) {
-                IndexType const base = common_mapping((bi * width), j, k);
+                IndexType const base = common_mapping(1 + (bi * width), j, k);
                 EulerPrim<SimdType> const prim = load<SimdType>(prim_ptrs, base);
                 EulerFlux<SimdType> flux {};
 
