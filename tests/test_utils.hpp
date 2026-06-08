@@ -4,9 +4,7 @@
 
 #include <Kokkos_Core.hpp>
 #include <euler_arrays.hpp>
-#include <perfect_gas.hpp>
-
-#include "uniform_mesh.hpp"
+#include <uniform_mesh.hpp>
 
 template <class T>
 bool compare(EulerPrimArrays<T> const& ref, EulerPrimArrays<T> const& vec, double tol, int idx)
@@ -103,12 +101,9 @@ void init_ramp_state(
 
             KOKKOS_LAMBDA(IndexType const i, IndexType const j, IndexType const k) {
                 // map index to physical coordinate
-                T const x0 = (((i + 0.5) * dx0) - 0.5);
-                // map x0 to [0,1]
-                T const xi = x0 + 0.5;
-
+                T const x0 = ((i + 0.5) * dx0);
                 // use smoothstep cubic Hermite interpolation
-                T const ramp = xi * xi * (3 - (2 * xi)); // smoothstep
+                T const ramp = x0 * x0 * (3 - (2 * x0));
 
                 T const d = 1.0 + (d_ramp * ramp);
                 T const p = 1.0 + (p_ramp * ramp);
