@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -21,7 +22,53 @@
 
 namespace {
 
-double compute_error(int const nx, int const ny, int const nz, int const dir)
+struct OptiImpl
+{
+    static constexpr auto prim_to_cons
+            = [](auto&&... args) { ::prim_to_cons(std::forward<decltype(args)>(args)...); };
+
+    static constexpr auto time_step
+            = [](auto&&... args) { return ::time_step(std::forward<decltype(args)>(args)...); };
+
+    static constexpr auto godunov
+            = [](auto&&... args) { ::godunov_opti(std::forward<decltype(args)>(args)...); };
+
+    static constexpr auto cons_to_prim
+            = [](auto&&... args) { ::cons_to_prim(std::forward<decltype(args)>(args)...); };
+};
+
+struct VectorImpl
+{
+    static constexpr auto prim_to_cons
+            = [](auto&&... args) { ::prim_to_cons_vec(std::forward<decltype(args)>(args)...); };
+
+    static constexpr auto time_step
+            = [](auto&&... args) { return ::time_step_vec(std::forward<decltype(args)>(args)...); };
+
+    static constexpr auto godunov
+            = [](auto&&... args) { ::godunov_vec(std::forward<decltype(args)>(args)...); };
+
+    static constexpr auto cons_to_prim
+            = [](auto&&... args) { ::cons_to_prim_vec(std::forward<decltype(args)>(args)...); };
+};
+
+struct ScalarImpl
+{
+    static constexpr auto prim_to_cons
+            = [](auto&&... args) { ::prim_to_cons(std::forward<decltype(args)>(args)...); };
+
+    static constexpr auto time_step
+            = [](auto&&... args) { return ::time_step(std::forward<decltype(args)>(args)...); };
+
+    static constexpr auto godunov
+            = [](auto&&... args) { ::godunov(std::forward<decltype(args)>(args)...); };
+
+    static constexpr auto cons_to_prim
+            = [](auto&&... args) { ::cons_to_prim(std::forward<decltype(args)>(args)...); };
+};
+
+template <class Impl>
+double compute_error(int const nx, int const ny, int const nz, int const dir, Impl impl)
 {
     using index_t = int;
     using real_t = double;
@@ -62,12 +109,12 @@ double compute_error(int const nx, int const ny, int const nz, int const dir)
     real_t t = 0;
 
     cosine_advection_solution(exec_space, prim_arrays, mesh, t, dir);
-    prim_to_cons(exec_space, as_const(prim_arrays), cons_arrays, eos);
+    impl.prim_to_cons(exec_space, as_const(prim_arrays), cons_arrays, eos);
 
     exec_space.fence();
     bool exit = false;
     while (!exit) {
-        real_t dt = time_step(exec_space, as_const(prim_arrays), eos, mesh);
+        real_t dt = impl.time_step(exec_space, as_const(prim_arrays), eos, mesh);
         dt *= cfl_factor;
         if (t + dt >= tend) {
             dt = tend - t;
@@ -77,11 +124,11 @@ double compute_error(int const nx, int const ny, int const nz, int const dir)
             exit = true;
         }
 
-        godunov(exec_space, as_const(prim_arrays), cons_arrays, eos, mesh, riemann_solver, dt);
+        impl.godunov(exec_space, as_const(prim_arrays), cons_arrays, eos, mesh, riemann_solver, dt);
 
         boundary_conditions_periodic(exec_space, cons_arrays, 1);
 
-        cons_to_prim(exec_space, as_const(cons_arrays), prim_arrays, eos);
+        impl.cons_to_prim(exec_space, as_const(cons_arrays), prim_arrays, eos);
 
         t += dt;
         ++it;
@@ -104,7 +151,7 @@ TEST(Euler, Convergence2dX)
     std::vector<int> const sizes {32, 64, 128, 256, 512, 1024};
     std::vector<double> errors(sizes.size());
     for (std::size_t i = 0; i < errors.size(); ++i) {
-        errors[i] = compute_error(sizes[i], sizes[i], 1, 0);
+        errors[i] = compute_error(sizes[i], sizes[i], 1, 0, ScalarImpl {});
     }
     std::vector<double> orders(sizes.size() - 1);
     for (std::size_t i = 0; i < orders.size(); ++i) {
@@ -123,7 +170,7 @@ TEST(Euler, Convergence2dY)
     std::vector<int> const sizes {32, 64, 128, 256, 512, 1024};
     std::vector<double> errors(sizes.size());
     for (std::size_t i = 0; i < errors.size(); ++i) {
-        errors[i] = compute_error(1, sizes[i], sizes[i], 1);
+        errors[i] = compute_error(1, sizes[i], sizes[i], 1, ScalarImpl {});
     }
     std::vector<double> orders(sizes.size() - 1);
     for (std::size_t i = 0; i < orders.size(); ++i) {
@@ -142,7 +189,121 @@ TEST(Euler, Convergence2dZ)
     std::vector<int> const sizes {32, 64, 128, 256, 512, 1024};
     std::vector<double> errors(sizes.size());
     for (std::size_t i = 0; i < errors.size(); ++i) {
-        errors[i] = compute_error(sizes[i], 1, sizes[i], 2);
+        errors[i] = compute_error(sizes[i], 1, sizes[i], 2, ScalarImpl {});
+    }
+    std::vector<double> orders(sizes.size() - 1);
+    for (std::size_t i = 0; i < orders.size(); ++i) {
+        orders[i] = -std::log10(errors[i + 1] / errors[i]) / std::log10(sizes[i + 1] / sizes[i]);
+    }
+
+    double const expected_order = 1;
+    EXPECT_GT(orders.back(), expected_order * 0.95);
+    for (std::size_t i = 0; i < orders.size() - 1; ++i) {
+        EXPECT_LT(orders[i], orders[i + 1]) << i;
+    }
+}
+
+TEST(EulerVectorized, Convergence2dX)
+{
+    std::vector<int> const sizes {32, 64, 128, 256, 512, 1024};
+    std::vector<double> errors(sizes.size());
+    for (std::size_t i = 0; i < errors.size(); ++i) {
+        errors[i] = compute_error(sizes[i], sizes[i], 1, 0, VectorImpl {});
+    }
+    std::vector<double> orders(sizes.size() - 1);
+    for (std::size_t i = 0; i < orders.size(); ++i) {
+        orders[i] = -std::log10(errors[i + 1] / errors[i]) / std::log10(sizes[i + 1] / sizes[i]);
+    }
+
+    double const expected_order = 1;
+    EXPECT_GT(orders.back(), expected_order * 0.95);
+    for (std::size_t i = 0; i < orders.size() - 1; ++i) {
+        EXPECT_LT(orders[i], orders[i + 1]) << i;
+    }
+}
+
+TEST(EulerVectorized, Convergence2dY)
+{
+    std::vector<int> const sizes {32, 64, 128, 256, 512, 1024};
+    std::vector<double> errors(sizes.size());
+    for (std::size_t i = 0; i < errors.size(); ++i) {
+        errors[i] = compute_error(1, sizes[i], sizes[i], 1, VectorImpl {});
+    }
+    std::vector<double> orders(sizes.size() - 1);
+    for (std::size_t i = 0; i < orders.size(); ++i) {
+        orders[i] = -std::log10(errors[i + 1] / errors[i]) / std::log10(sizes[i + 1] / sizes[i]);
+    }
+
+    double const expected_order = 1;
+    EXPECT_GT(orders.back(), expected_order * 0.95);
+    for (std::size_t i = 0; i < orders.size() - 1; ++i) {
+        EXPECT_LT(orders[i], orders[i + 1]) << i;
+    }
+}
+
+TEST(EulerVectorized, Convergence2dZ)
+{
+    std::vector<int> const sizes {32, 64, 128, 256, 512, 1024};
+    std::vector<double> errors(sizes.size());
+    for (std::size_t i = 0; i < errors.size(); ++i) {
+        errors[i] = compute_error(sizes[i], 1, sizes[i], 2, VectorImpl {});
+    }
+    std::vector<double> orders(sizes.size() - 1);
+    for (std::size_t i = 0; i < orders.size(); ++i) {
+        orders[i] = -std::log10(errors[i + 1] / errors[i]) / std::log10(sizes[i + 1] / sizes[i]);
+    }
+
+    double const expected_order = 1;
+    EXPECT_GT(orders.back(), expected_order * 0.95);
+    for (std::size_t i = 0; i < orders.size() - 1; ++i) {
+        EXPECT_LT(orders[i], orders[i + 1]) << i;
+    }
+}
+
+TEST(EulerOpti, Convergence2dX)
+{
+    std::vector<int> const sizes {32, 64, 128, 256, 512, 1024};
+    std::vector<double> errors(sizes.size());
+    for (std::size_t i = 0; i < errors.size(); ++i) {
+        errors[i] = compute_error(sizes[i], sizes[i], 1, 0, OptiImpl {});
+    }
+    std::vector<double> orders(sizes.size() - 1);
+    for (std::size_t i = 0; i < orders.size(); ++i) {
+        orders[i] = -std::log10(errors[i + 1] / errors[i]) / std::log10(sizes[i + 1] / sizes[i]);
+    }
+
+    double const expected_order = 1;
+    EXPECT_GT(orders.back(), expected_order * 0.95);
+    for (std::size_t i = 0; i < orders.size() - 1; ++i) {
+        EXPECT_LT(orders[i], orders[i + 1]) << i;
+    }
+}
+
+TEST(EulerOpti, Convergence2dY)
+{
+    std::vector<int> const sizes {32, 64, 128, 256, 512, 1024};
+    std::vector<double> errors(sizes.size());
+    for (std::size_t i = 0; i < errors.size(); ++i) {
+        errors[i] = compute_error(1, sizes[i], sizes[i], 1, OptiImpl {});
+    }
+    std::vector<double> orders(sizes.size() - 1);
+    for (std::size_t i = 0; i < orders.size(); ++i) {
+        orders[i] = -std::log10(errors[i + 1] / errors[i]) / std::log10(sizes[i + 1] / sizes[i]);
+    }
+
+    double const expected_order = 1;
+    EXPECT_GT(orders.back(), expected_order * 0.95);
+    for (std::size_t i = 0; i < orders.size() - 1; ++i) {
+        EXPECT_LT(orders[i], orders[i + 1]) << i;
+    }
+}
+
+TEST(EulerOpti, Convergence2dZ)
+{
+    std::vector<int> const sizes {32, 64, 128, 256, 512, 1024};
+    std::vector<double> errors(sizes.size());
+    for (std::size_t i = 0; i < errors.size(); ++i) {
+        errors[i] = compute_error(sizes[i], 1, sizes[i], 2, OptiImpl {});
     }
     std::vector<double> orders(sizes.size() - 1);
     for (std::size_t i = 0; i < orders.size(); ++i) {
