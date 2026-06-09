@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <span>
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ReductionIdentity.hpp>
@@ -94,14 +95,12 @@ T time_step_kernel(
         EulerPrimArrays<Kokkos::mdspan<
                 T const,
                 Kokkos::extents<IndexType, E0, E1, E2>,
-                Kokkos::layout_left>> const& prim_arrays,
+                Kokkos::Experimental::layout_left_padded<std::dynamic_extent>>> const& prim_arrays,
         PerfectGas<T> const& eos,
-        UniformMesh3d<T> const& mesh,
-        IndexType n0_begin,
-        IndexType n0_end)
+        UniformMesh3d<T> const& mesh)
 {
     constexpr IndexType width = SimdType::size();
-    IndexType const n0_blocks = (n0_end - n0_begin) / width;
+    IndexType const n0_blocks = prim_arrays.d.extent(0) / width;
     IndexType const n1 = prim_arrays.d.extent(1);
     IndexType const n2 = prim_arrays.d.extent(2);
 
@@ -109,7 +108,7 @@ T time_step_kernel(
     T const invdx1 = 1 / mesh.dx1();
     T const invdx2 = 1 / mesh.dx2();
 
-    Kokkos::layout_left::mapping const prim_mapping = prim_arrays.d.mapping();
+    auto const prim_mapping = prim_arrays.d.mapping();
     EulerPrimArrays const prim_ptrs = data_handle(prim_arrays);
 
     SimdType invdt_simd {};
@@ -119,7 +118,7 @@ T time_step_kernel(
                     Kokkos::Rank<3, Kokkos::Iterate::Left, Kokkos::Iterate::Left>,
                     Kokkos::IndexType<IndexType>>(exec_space, {0, 0, 0}, {n0_blocks, n1, n2}),
             KOKKOS_LAMBDA(IndexType bi, IndexType j, IndexType k, SimdType & invdt_loc) {
-                IndexType const base = prim_mapping(n0_begin + (bi * width), j, k);
+                IndexType const base = prim_mapping(bi * width, j, k);
                 EulerPrim const prim = load<SimdType>(prim_ptrs, base);
                 SimdType const cs = eos.speed_of_sound(prim.d, prim.p);
                 SimdType const cx0 = cs + Kokkos::abs(prim.ux0);
@@ -150,12 +149,21 @@ T time_step_vec(
     IndexType const n0 = prim_arrays.d.extent(0);
     IndexType const vec_end = (n0 / simd_t::size()) * simd_t::size();
 
-    T invdt = time_step_kernel<simd_t>(exec_space, prim_arrays, eos, mesh, IndexType(0), vec_end);
+    T invdt {};
 
+    Kokkos::full_extent_t const slice1;
+    Kokkos::full_extent_t const slice2;
+    {
+        Kokkos::pair const slice0(0, vec_end);
+        EulerPrimArrays const sub_prim_arrays = subspan(prim_arrays, slice0, slice1, slice2);
+        invdt = Kokkos::
+                max(invdt, time_step_kernel<simd_t>(exec_space, sub_prim_arrays, eos, mesh));
+    }
     if (vec_end < n0) {
-        T const invdt_tail
-                = time_step_kernel<simd_scalar_t>(exec_space, prim_arrays, eos, mesh, vec_end, n0);
-        invdt = Kokkos::max(invdt, invdt_tail);
+        Kokkos::pair const slice0(vec_end, n0);
+        EulerPrimArrays const sub_prim_arrays = subspan(prim_arrays, slice0, slice1, slice2);
+        invdt = Kokkos::
+                max(invdt, time_step_kernel<simd_scalar_t>(exec_space, sub_prim_arrays, eos, mesh));
     }
     return 1 / invdt;
 }
