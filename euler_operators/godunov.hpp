@@ -190,7 +190,6 @@ void godunov_kernel(
 
         PerfectGas<T> const& eos,
         UniformMesh3d<T> const& mesh,
-
         hllc const& riemann_solver,
         T const dt)
 {
@@ -290,7 +289,6 @@ void godunov_vec(
     IndexType const n0_begin = 1;
     IndexType const n0_inner = n0 - 2; // number of interior cells
     IndexType const vec_end = n0_begin + ((n0_inner / simd_t::size()) * simd_t::size());
-
     IndexType const n0_end = n0 - 1;
 
     Kokkos::full_extent_t const slice1;
