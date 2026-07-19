@@ -22,7 +22,7 @@ cmake --build build-benchmark --parallel 8
 cmake --install build-benchmark --prefix "$benchmark_ROOT"
 rm -rf build-benchmark benchmark
 
-git clone --branch 5.1.1 --depth 1 https://github.com/kokkos/kokkos.git
+git clone --depth 1 git@github.com:tim-pearson/kokkos_extended_simd.git
 cmake \
   -D CMAKE_BUILD_TYPE=Release \
   -D CMAKE_CXX_STANDARD=20 \

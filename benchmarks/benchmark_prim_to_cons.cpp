@@ -76,6 +76,37 @@ void PrimToConsVectorized(benchmark::State& state)
     set_constant_bytes_processed(state, size_bytes(prim_arrays) + size_bytes(cons_arrays));
 }
 
+void PrimToConsVectorized2(benchmark::State& state)
+{
+    auto const n = int_cast<index_t>(state.range());
+    PerfectGas<real_t> const eos(1.4);
+    Kokkos::DefaultExecutionSpace const exec_space;
+    auto nz = static_cast<std::size_t>(n);
+    std::size_t const n3 = nz * nz * nz;
+    EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, n3);
+    EulerPrimArrays const prim_arrays = to_mdspan<Kokkos::mdspan<
+            real_t,
+            Kokkos::dextents<index_t, 3>,
+            Kokkos::layout_left>>(prims_alloc, n, n, n);
+    EulerConsArrays const cons_alloc = create_cons_arrays_1d<real_t>(exec_space, n3);
+    EulerConsArrays const cons_arrays = to_mdspan<Kokkos::mdspan<
+            real_t,
+            Kokkos::dextents<index_t, 3>,
+            Kokkos::layout_left>>(cons_alloc, n, n, n);
+    EulerPrim<real_t> const prim {.d = 1, .p = 1, .ux0 = 0, .ux1 = 0, .ux2 = 0};
+    init_from_state(exec_space, prim_arrays, prim);
+    exec_space.fence();
+
+    for ([[maybe_unused]] auto _ : state) {
+        prim_to_cons_vec2(exec_space, as_const(prim_arrays), cons_arrays, eos);
+        exec_space.fence();
+        benchmark::ClobberMemory();
+    }
+
+    set_constant_cells_processed(state, size(cons_arrays));
+    set_constant_bytes_processed(state, size_bytes(prim_arrays) + size_bytes(cons_arrays));
+}
+
 void PrimToConsWorstRem(benchmark::State& state)
 {
     auto const n = int_cast<index_t>(state.range());
@@ -142,10 +173,11 @@ void PrimToConsWorstRemVectorized(benchmark::State& state)
 
 } // namespace
 
-BENCHMARK(PrimToCons)->UseRealTime()->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);
-BENCHMARK(PrimToConsVectorized)->UseRealTime()->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);
-BENCHMARK(PrimToConsWorstRem)->UseRealTime()->DenseRange(7, 128, 8)->DenseRange(127, 320, 32);
-BENCHMARK(PrimToConsWorstRemVectorized)
-        ->UseRealTime()
-        ->DenseRange(7, 128, 8)
-        ->DenseRange(127, 320, 32);
+// BENCHMARK(PrimToCons)->UseRealTime()->DenseRange(8, 128, 8)->DenseRange(128, 320, 32);
+BENCHMARK(PrimToConsVectorized)->UseRealTime()->DenseRange(8, 127, 8)->DenseRange(128, 320, 32);
+BENCHMARK(PrimToConsVectorized2)->UseRealTime()->DenseRange(8, 127, 8)->DenseRange(128, 320, 32);
+// BENCHMARK(PrimToConsWorstRem)->UseRealTime()->DenseRange(7, 128, 8)->DenseRange(127, 320, 32);
+// BENCHMARK(PrimToConsWorstRemVectorized)
+//         ->UseRealTime()
+//         ->DenseRange(7, 128, 8)
+//         ->DenseRange(127, 320, 32);

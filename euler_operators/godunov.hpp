@@ -6,6 +6,7 @@
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_SIMD.hpp>
+#include <Kokkos_SIMD_Extended.hpp>
 #include <euler_arrays.hpp>
 #include <hllc.hpp>
 #include <perfect_gas.hpp>
@@ -265,7 +266,7 @@ void godunov_kernel(
 }
 
 template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
-void godunov_vec(
+void godunov_vec2(
         Kokkos::DefaultExecutionSpace const& exec_space,
         EulerPrimArrays<Kokkos::mdspan<
                 T const,
@@ -284,6 +285,72 @@ void godunov_vec(
     using simd_t = KE::simd<T>;
     using simd_scalar_t = KE::basic_simd<T, KE::simd_abi::scalar>;
 
+    // interior x-range is [1, n0-1)
+    IndexType const n0 = prim_arrays.d.extent(0);
+    IndexType const n0_begin = 1;
+    IndexType const n0_inner = n0 - 2; // number of interior cells
+    IndexType const vec_end = n0_begin + ((n0_inner / simd_t::size()) * simd_t::size());
+    IndexType const n0_end = n0 - 1;
+
+    Kokkos::full_extent_t const slice1;
+    Kokkos::full_extent_t const slice2;
+    {
+        Kokkos::pair const slice0(0, vec_end + 1); // include right most neighbor
+        EulerPrimArrays const sub_prim_arrays = subspan(prim_arrays, slice0, slice1, slice2);
+        EulerConsArrays const sub_cons_arrays = subspan(cons_arrays, slice0, slice1, slice2);
+        godunov_kernel<simd_t>(
+                exec_space,
+                sub_prim_arrays,
+                sub_cons_arrays,
+                eos,
+                mesh,
+                riemann_solver,
+                dt);
+    }
+
+    if (vec_end < n0_end) {
+        Kokkos::pair const slice0(vec_end - 1, n0); // include left most neighbor
+        EulerPrimArrays const sub_prim_arrays = subspan(prim_arrays, slice0, slice1, slice2);
+        EulerConsArrays const sub_cons_arrays = subspan(cons_arrays, slice0, slice1, slice2);
+
+        godunov_kernel<simd_scalar_t>(
+                exec_space,
+                sub_prim_arrays,
+                sub_cons_arrays,
+                eos,
+                mesh,
+                riemann_solver,
+                dt);
+    }
+}
+
+template <class T, class IndexType, std::size_t E0, std::size_t E1, std::size_t E2>
+void godunov_vec(
+        Kokkos::DefaultExecutionSpace const& exec_space,
+        EulerPrimArrays<Kokkos::mdspan<
+                T const,
+                Kokkos::extents<IndexType, E0, E1, E2>,
+                Kokkos::layout_left>> const& prim_arrays,
+        EulerConsArrays<Kokkos::mdspan<
+                T,
+                Kokkos::extents<IndexType, E0, E1, E2>,
+                Kokkos::layout_left>> const& cons_arrays,
+        PerfectGas<T> const& eos,
+        UniformMesh3d<T> const& mesh,
+        hllc const& riemann_solver,
+        T const dt)
+{
+    namespace KE = Kokkos::Experimental;
+
+    using scalar_simd_t = KE::basic_simd<T, KE::simd_abi::scalar>;
+
+    using simd_type = KE::simd<double>;
+
+    using simd_t = KE::basic_simd<
+            double,
+            KE::simd_abi::extended_abi<simd_type::abi_type, simd_type::size() * 2>>;
+
+    using simd_scalar_t = KE::basic_simd<T, KE::simd_abi::scalar>;
     // interior x-range is [1, n0-1)
     IndexType const n0 = prim_arrays.d.extent(0);
     IndexType const n0_begin = 1;

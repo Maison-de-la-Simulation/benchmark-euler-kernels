@@ -5,6 +5,7 @@
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_SIMD.hpp>
+#include <Kokkos_SIMD_Extended.hpp>
 
 template <class T>
 struct EulerPrim
