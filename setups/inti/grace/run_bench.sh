@@ -25,7 +25,6 @@ export OMP_PLACES=cores
 BENCHMARK_FILTER="Godunov"
 
 ./build-grace/benchmarks/euler_benchmarks \
-  --benchmark_dry_run \
   --benchmark_filter="${BENCHMARK_FILTER}" \
   --benchmark_out_format=json \
   --benchmark_out="./results/inti/[${SLURM_JOB_ID}]_grace-${BENCHMARK_FILTER}.json"
