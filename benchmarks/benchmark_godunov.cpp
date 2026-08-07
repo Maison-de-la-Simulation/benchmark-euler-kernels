@@ -53,6 +53,48 @@ void Godunov(benchmark::State& state)
     set_constant_bytes_processed(state, size_bytes(prim_arrays) + (2 * size_bytes(cons_arrays)));
 }
 
+void Godunov_CONST(benchmark::State& state)
+{
+    using index_t = int;
+
+    constexpr index_t ng = 258; // 256 cells + 2 ghost cells
+    constexpr std::size_t total_size = ng * ng * ng;
+
+    PerfectGas<real_t> const eos(1.4);
+    UniformMesh3d<real_t> const mesh(1., 1., 1.);
+    real_t const dt = 1E-9;
+
+    Kokkos::DefaultExecutionSpace const exec_space;
+
+    using MDSpan
+            = Kokkos::mdspan<real_t, Kokkos::extents<index_t, ng, ng, ng>, Kokkos::layout_left>;
+
+    EulerPrimArrays const prims_alloc = create_prim_arrays_1d<real_t>(exec_space, total_size);
+
+    EulerPrimArrays const prim_arrays = to_mdspan<MDSpan>(prims_alloc, ng, ng, ng);
+
+    EulerConsArrays const cons_alloc = create_cons_arrays_1d<real_t>(exec_space, total_size);
+
+    EulerConsArrays const cons_arrays = to_mdspan<MDSpan>(cons_alloc, ng, ng, ng);
+
+    EulerPrim<real_t> const prim {.d = 1, .p = 1, .ux0 = 0, .ux1 = 0, .ux2 = 0};
+
+    init_from_state(exec_space, prim_arrays, prim);
+    init_from_state(exec_space, cons_arrays, to_cons(prim, eos.internal_energy(prim.d, prim.p)));
+
+    exec_space.fence();
+
+    for ([[maybe_unused]] auto _ : state) {
+        godunov(exec_space, as_const(prim_arrays), cons_arrays, eos, mesh, hllc(), dt);
+
+        exec_space.fence();
+        benchmark::ClobberMemory();
+    }
+
+    set_constant_cells_processed(state, size(cons_arrays));
+    set_constant_bytes_processed(state, size_bytes(prim_arrays) + (2 * size_bytes(cons_arrays)));
+}
+
 void GodunovOpti(benchmark::State& state)
 {
     auto const n = int_cast<index_t>(state.range());
@@ -198,23 +240,21 @@ void GodunovVectorizedWorstRem(benchmark::State& state)
 
 } // namespace
 
-BENCHMARK(Godunov)
-        ->UseRealTime()
-        ->DenseRange(8, 31, 8)
-        ->DenseRange(32, 127, 16)
-        ->DenseRange(128, 320, 32);
+BENCHMARK(Godunov_CONST)->UseRealTime();
+// ->DenseRange(8, 31, 8)
+// ->DenseRange(32, 127, 16)
+// ->DenseRange(128, 320, 32);
 
-BENCHMARK(GodunovOpti)
-        ->UseRealTime()
-        ->DenseRange(8, 31, 8)
-        ->DenseRange(32, 127, 16)
-        ->DenseRange(128, 320, 32);
+BENCHMARK(Godunov)->UseRealTime()->Arg(256);
+BENCHMARK(GodunovOpti)->UseRealTime()->Arg(256);
+// ->DenseRange(8, 31, 8)
+// ->DenseRange(32, 127, 16)
+// ->DenseRange(128, 320, 32);
 
-BENCHMARK(GodunovVectorized)
-        ->UseRealTime()
-        ->DenseRange(8, 31, 8)
-        ->DenseRange(32, 127, 16)
-        ->DenseRange(128, 320, 32);
+BENCHMARK(GodunovVectorized)->UseRealTime()->Arg(256);
+// ->DenseRange(8, 31, 8)
+// ->DenseRange(32, 127, 16)
+// ->DenseRange(128, 320, 32);
 
-BENCHMARK(GodunovWorstRem)->UseRealTime()->DenseRange(7, 31, 8)->DenseRange(31, 320, 32);
-BENCHMARK(GodunovVectorizedWorstRem)->UseRealTime()->DenseRange(7, 31, 8)->DenseRange(31, 320, 32);
+// BENCHMARK(GodunovWorstRem)->UseRealTime()->DenseRange(7, 31, 8)->DenseRange(31, 320, 32);
+// BENCHMARK(GodunovVectorizedWorstRem)->UseRealTime()->DenseRange(7, 31, 8)->DenseRange(31, 320, 32);
