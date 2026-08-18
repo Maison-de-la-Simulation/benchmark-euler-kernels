@@ -20,6 +20,7 @@
 #include <uniform_mesh.hpp>
 
 #include "save_npy.hpp"
+#include "save_vtkhdf.hpp"
 
 int main(int argc, char** argv)
 {
@@ -82,8 +83,13 @@ int main(int argc, char** argv)
             std::stringstream ss;
             ss << "test_vec_" << std::setfill('0') << std::setw(padding) << it << ".npy";
             std::fstream file(ss.str(), std::fstream::out);
-            std::cout << "Saving " << ss.str() << ' ';
+            std::cout << "Saving " << ss.str() << ' ' << std::flush;
             save_npy(file, prim_arrays.p);
+            std::cout << "done\n" << std::flush;
+            ss.str("");
+            ss << "test_vec_" << std::setfill('0') << std::setw(padding) << it << ".vtkhdf";
+            std::cout << "Saving " << ss.str() << ' ' << std::flush;
+            write_imagedata(ss.str().c_str(), "pressure", prim_arrays.p);
             std::cout << "done\n" << std::flush;
         }
     }
